@@ -1,0 +1,2217 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zenya Farm - Sipariş Sistemi</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #09090b; --card: #18181b; --hover: #27272a; --border: #3f3f46;
+      --text: #fafafa; --text2: #a1a1aa; --muted: #71717a;
+      --green: #22c55e; --green-dim: rgba(34,197,94,0.15);
+      --blue: #3b82f6; --blue-dim: rgba(59,130,246,0.15);
+      --orange: #f97316; --orange-dim: rgba(249,115,22,0.15);
+      --red: #ef4444; --red-dim: rgba(239,68,68,0.15);
+      --purple: #a855f7; --purple-dim: rgba(168,85,247,0.15);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; min-height: 100vh; }
+    
+    .app { display: flex; flex-direction: column; min-height: 100vh; }
+    
+    /* Header */
+    .header { background: var(--card); border-bottom: 1px solid var(--border); padding: 12px 16px; position: sticky; top: 0; z-index: 100; }
+    .header-inner { max-width: 1400px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .logo { display: flex; align-items: center; gap: 10px; }
+    .logo-icon { width: 40px; height: 40px; background: linear-gradient(135deg, var(--green), #16a34a); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+    .logo h1 { font-size: 18px; font-weight: 700; }
+    .logo span { font-size: 12px; color: var(--muted); }
+    
+    .header-actions { display: flex; align-items: center; gap: 10px; }
+    .cart-btn { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: var(--green); color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; }
+    .cart-btn:hover { background: #16a34a; }
+    .cart-count { background: white; color: var(--green); padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 700; }
+    
+    /* Main Layout */
+    .main { flex: 1; display: flex; max-width: 1400px; margin: 0 auto; width: 100%; }
+    
+    /* Sidebar - Müşteri Seçimi */
+    .sidebar { width: 220px; background: var(--card); border-right: 1px solid var(--border); padding: 16px; flex-shrink: 0; }
+    .sidebar h2 { font-size: 12px; color: var(--muted); text-transform: uppercase; margin-bottom: 12px; }
+    .customer-list { display: flex; flex-direction: column; gap: 6px; }
+    .customer-btn { padding: 12px; background: var(--hover); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 13px; font-weight: 500; cursor: pointer; text-align: left; transition: all 0.15s; font-family: inherit; }
+    .customer-btn:hover { border-color: var(--green); }
+    .customer-btn.active { background: var(--green-dim); border-color: var(--green); color: var(--green); }
+    .customer-btn .count { float: right; background: var(--border); padding: 2px 6px; border-radius: 4px; font-size: 10px; }
+    .customer-btn.active .count { background: rgba(34,197,94,0.3); }
+    
+    .add-customer { margin-top: 12px; padding: 10px; background: transparent; border: 1px dashed var(--border); border-radius: 8px; color: var(--muted); font-size: 12px; cursor: pointer; width: 100%; font-family: inherit; }
+    .add-customer:hover { border-color: var(--green); color: var(--green); }
+    
+    /* Products Grid */
+    .content { flex: 1; padding: 16px; overflow-y: auto; }
+    .content-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; gap: 12px; flex-wrap: wrap; }
+    .search-box { flex: 1; max-width: 400px; position: relative; }
+    .search-box input { width: 100%; padding: 12px 16px 12px 40px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; font-family: inherit; }
+    .search-box input:focus { outline: none; border-color: var(--green); }
+    .search-box::before { content: '🔍'; position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; }
+    
+    .category-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
+    .cat-tab { padding: 8px 14px; background: var(--card); border: 1px solid var(--border); border-radius: 6px; color: var(--text2); font-size: 12px; font-weight: 500; cursor: pointer; white-space: nowrap; font-family: inherit; }
+    .cat-tab:hover { border-color: var(--text2); }
+    .cat-tab.active { background: var(--green-dim); border-color: var(--green); color: var(--green); }
+    
+    .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin-top: 16px; }
+    .product-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; cursor: pointer; transition: all 0.15s; }
+    .product-card:hover { border-color: var(--green); transform: translateY(-2px); }
+    .product-card.in-cart { border-color: var(--green); background: var(--green-dim); }
+    .product-emoji { font-size: 28px; margin-bottom: 8px; }
+    .product-name { font-size: 13px; font-weight: 600; margin-bottom: 4px; line-height: 1.3; }
+    .product-code { font-size: 10px; color: var(--muted); font-family: monospace; background: var(--hover); padding: 2px 6px; border-radius: 4px; display: inline-block; }
+    .product-unit { font-size: 11px; color: var(--text2); margin-top: 6px; }
+    
+    /* Cart Sidebar */
+    .cart-sidebar { width: 360px; background: var(--card); border-left: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
+    .cart-sidebar.hidden { display: none; }
+    .cart-header { padding: 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .cart-header h2 { font-size: 16px; font-weight: 600; }
+    .cart-close { background: none; border: none; color: var(--muted); font-size: 20px; cursor: pointer; }
+    
+    .cart-customer { padding: 12px 16px; background: var(--green-dim); border-bottom: 1px solid var(--border); }
+    .cart-customer span { font-size: 12px; color: var(--muted); }
+    .cart-customer strong { color: var(--green); font-size: 14px; }
+    
+    .cart-items { flex: 1; overflow-y: auto; padding: 12px; }
+    .cart-item { display: flex; align-items: center; gap: 10px; padding: 10px; background: var(--hover); border-radius: 8px; margin-bottom: 8px; }
+    .cart-item-info { flex: 1; }
+    .cart-item-name { font-size: 13px; font-weight: 500; }
+    .cart-item-unit { font-size: 11px; color: var(--muted); }
+    .cart-item-qty { display: flex; align-items: center; gap: 6px; }
+    .cart-item-qty button { width: 28px; height: 28px; border: 1px solid var(--border); background: var(--card); color: var(--text); border-radius: 6px; cursor: pointer; font-size: 14px; }
+    .cart-item-qty button:hover { border-color: var(--green); }
+    .cart-item-qty input { width: 50px; padding: 4px; background: var(--card); border: 1px solid var(--border); border-radius: 6px; color: var(--text); text-align: center; font-size: 13px; font-family: inherit; }
+    .cart-item-remove { color: var(--red); background: none; border: none; cursor: pointer; font-size: 16px; }
+    
+    .cart-empty { text-align: center; padding: 40px 20px; color: var(--muted); }
+    .cart-empty-icon { font-size: 40px; margin-bottom: 10px; }
+    
+    .cart-footer { padding: 16px; border-top: 1px solid var(--border); }
+    .cart-total { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px; }
+    .cart-total strong { color: var(--green); }
+    .cart-actions { display: flex; flex-direction: column; gap: 8px; }
+    .btn { padding: 12px 16px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .btn-primary { background: linear-gradient(135deg, var(--green), #16a34a); color: white; }
+    .btn-primary:hover { transform: translateY(-1px); }
+    .btn-secondary { background: var(--hover); color: var(--text); border: 1px solid var(--border); }
+    .btn-danger { background: var(--red-dim); color: var(--red); }
+    
+    /* Modal */
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+    .modal-overlay.hidden { display: none !important; }
+    .hidden { display: none !important; }
+    .modal { background: var(--card); border: 1px solid var(--border); border-radius: 12px; width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
+    .modal-header { padding: 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .modal-header h2 { font-size: 16px; }
+    .modal-body { padding: 16px; }
+    .modal-footer { padding: 16px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
+    
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; }
+    .form-group input, .form-group select { width: 100%; padding: 12px; background: var(--hover); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; font-family: inherit; }
+    .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--green); }
+    
+    /* Quantity Modal */
+    .qty-modal-content { text-align: center; }
+    .qty-modal-product { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+    .qty-modal-unit { color: var(--muted); font-size: 14px; margin-bottom: 20px; }
+    .qty-input-group { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 20px; }
+    .qty-input-group button { width: 48px; height: 48px; border: 1px solid var(--border); background: var(--hover); color: var(--text); border-radius: 10px; font-size: 24px; cursor: pointer; }
+    .qty-input-group button:hover { border-color: var(--green); background: var(--green-dim); }
+    .qty-input-group input { width: 100px; height: 48px; text-align: center; font-size: 24px; font-weight: 700; background: var(--hover); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: inherit; }
+    .qty-presets { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+    .qty-preset { padding: 8px 16px; background: var(--hover); border: 1px solid var(--border); border-radius: 6px; color: var(--text2); font-size: 13px; cursor: pointer; font-family: inherit; }
+    .qty-preset:hover { border-color: var(--green); color: var(--green); }
+    
+    .unit-selector { display: flex; gap: 6px; flex-wrap: wrap; }
+    .unit-btn { padding: 10px 16px; background: var(--hover); border: 1px solid var(--border); border-radius: 6px; color: var(--text2); font-size: 13px; cursor: pointer; font-family: inherit; flex: 1; min-width: 60px; }
+    .unit-btn:hover { border-color: var(--text2); }
+    .unit-btn.active { background: var(--green-dim); border-color: var(--green); color: var(--green); }
+    
+    /* All Orders View */
+    .orders-summary { padding: 16px; }
+    .orders-table { width: 100%; border-collapse: collapse; }
+    .orders-table th { text-align: left; padding: 10px; font-size: 11px; color: var(--muted); text-transform: uppercase; border-bottom: 1px solid var(--border); }
+    .orders-table td { padding: 10px; font-size: 13px; border-bottom: 1px solid var(--border); }
+    .orders-table tr:hover td { background: var(--hover); }
+    .orders-table .total-row { background: var(--green-dim); font-weight: 600; }
+    .orders-table .total-row td { color: var(--green); }
+    
+    /* Quick Order */
+    .quick-textarea { width: 100%; min-height: 150px; padding: 12px; background: var(--hover); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; font-family: inherit; resize: vertical; }
+    .quick-textarea:focus { outline: none; border-color: var(--green); }
+    .quick-result-header { display: flex; justify-content: space-between; align-items: center; margin: 16px 0 12px; padding: 10px; background: var(--green-dim); border-radius: 8px; }
+    .quick-result-header span { color: var(--green); font-weight: 600; font-size: 14px; }
+    .quick-table-wrap { max-height: 300px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; }
+    .quick-table { width: 100%; border-collapse: collapse; }
+    .quick-table th { text-align: left; padding: 10px; font-size: 11px; color: var(--muted); text-transform: uppercase; background: var(--hover); position: sticky; top: 0; }
+    .quick-table td { padding: 8px; border-top: 1px solid var(--border); }
+    .quick-table input, .quick-table select { width: 100%; padding: 8px; background: var(--card); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 13px; font-family: inherit; }
+    .quick-table input:focus, .quick-table select:focus { outline: none; border-color: var(--green); }
+    .quick-table .code-badge { display: inline-block; padding: 2px 6px; background: var(--hover); border-radius: 4px; font-size: 10px; font-family: monospace; color: var(--muted); margin-left: 6px; }
+    .quick-table .unknown { background: var(--red-dim); color: var(--red); }
+    
+    /* Responsive */
+    @media (max-width: 900px) {
+      .sidebar { display: none; }
+      .cart-sidebar { position: fixed; top: 0; right: 0; bottom: 0; width: 100%; max-width: 400px; z-index: 200; }
+      .main { flex-direction: column; }
+    }
+    @media (max-width: 600px) {
+      .products-grid { grid-template-columns: repeat(2, 1fr); }
+      .header-inner { flex-direction: column; align-items: stretch; }
+    }
+    
+    /* Product Picker Styles */
+    .product-cell { min-width: 200px; }
+    .product-selector { position: relative; }
+    .product-display {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--hover);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .product-display:hover {
+      border-color: var(--green);
+      background: var(--green-dim);
+    }
+    .product-display .product-name {
+      flex: 1;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .product-display .edit-icon {
+      font-size: 12px;
+      opacity: 0.5;
+    }
+    .product-display:hover .edit-icon {
+      opacity: 1;
+    }
+    
+    /* Picker Modal */
+    .picker-category {
+      margin-bottom: 16px;
+    }
+    .picker-cat-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      padding: 0 4px;
+    }
+    .picker-items {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 6px;
+    }
+    .picker-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      background: var(--hover);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .picker-item:hover {
+      border-color: var(--green);
+      background: var(--green-dim);
+      transform: translateY(-1px);
+    }
+    .picker-emoji {
+      font-size: 18px;
+    }
+    .picker-name {
+      flex: 1;
+      font-size: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .picker-code {
+      font-size: 10px;
+      color: var(--muted);
+      background: var(--bg);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    
+    /* PDF Upload Styles */
+    .pdf-upload-area {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 40px;
+      text-align: center;
+      transition: all 0.2s;
+    }
+    .pdf-upload-area.dragover {
+      border-color: var(--purple);
+      background: var(--purple-dim);
+    }
+    .upload-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+    .upload-text {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .upload-subtext {
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+    .upload-btn {
+      cursor: pointer;
+      display: inline-flex;
+      background: var(--purple) !important;
+    }
+    .upload-btn:hover {
+      background: #9333ea !important;
+    }
+    .upload-hint {
+      margin-top: 16px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    
+    .pdf-loading {
+      text-align: center;
+      padding: 60px;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--purple);
+      border-radius: 50%;
+      margin: 0 auto 16px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .pdf-info {
+      background: var(--purple-dim);
+      border: 1px solid var(--purple);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .pdf-info-icon {
+      font-size: 24px;
+    }
+    .pdf-info-text {
+      flex: 1;
+    }
+    .pdf-info-name {
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .pdf-info-details {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    
+    .pdf-result-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      padding: 8px 12px;
+      background: var(--green-dim);
+      border-radius: 8px;
+      color: var(--green);
+      font-weight: 600;
+    }
+    
+    .original-name {
+      font-size: 10px;
+      color: var(--orange);
+      margin-top: 4px;
+      padding: 2px 6px;
+      background: var(--orange-dim);
+      border-radius: 4px;
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-inner">
+        <div class="logo">
+          <div class="logo-icon">🥬</div>
+          <div>
+            <h1>Zenya Farm</h1>
+            <span>Sipariş Sistemi</span>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-secondary" onclick="showPdfUpload()" style="background:var(--purple-dim);border-color:var(--purple);color:var(--purple)">📄 PDF Yükle</button>
+          <button class="btn btn-secondary" onclick="showQuickOrder()">📝 Hızlı Giriş</button>
+          <button class="btn btn-secondary" onclick="showAllOrders()">📋 Tüm Siparişler</button>
+          <button class="btn btn-primary" onclick="exportExcel()">📥 Excel İndir</button>
+          <button class="cart-btn" onclick="toggleCart()">
+            🛒 Sepet <span class="cart-count" id="cart-count">0</span>
+          </button>
+        </div>
+      </div>
+    </header>
+    
+    <div class="main">
+      <!-- Sidebar - Müşteriler -->
+      <aside class="sidebar">
+        <h2>👥 Müşteriler</h2>
+        <div class="customer-list" id="customer-list"></div>
+        <button class="add-customer" onclick="showAddCustomer()">+ Yeni Müşteri</button>
+      </aside>
+      
+      <!-- Products -->
+      <main class="content">
+        <div class="content-header">
+          <div class="search-box">
+            <input type="text" id="search-input" placeholder="Ürün ara..." oninput="filterProducts()">
+          </div>
+        </div>
+        <div class="category-tabs" id="category-tabs"></div>
+        <div class="products-grid" id="products-grid"></div>
+      </main>
+      
+      <!-- Cart Sidebar -->
+      <aside class="cart-sidebar hidden" id="cart-sidebar">
+        <div class="cart-header">
+          <h2>🛒 Sepet</h2>
+          <button class="cart-close" onclick="toggleCart()">✕</button>
+        </div>
+        <div class="cart-customer" id="cart-customer">
+          <span>Müşteri:</span> <strong id="current-customer-name">Seçilmedi</strong>
+        </div>
+        <div class="cart-items" id="cart-items"></div>
+        <div class="cart-footer">
+          <div class="cart-total">
+            <span>Toplam Ürün:</span>
+            <strong id="cart-total">0</strong>
+          </div>
+          <div class="cart-actions">
+            <button class="btn btn-primary" onclick="confirmOrder()">✅ Siparişi Onayla</button>
+            <button class="btn btn-danger" onclick="clearCart()">🗑️ Sepeti Temizle</button>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+  
+  <!-- Quantity Modal -->
+  <div class="modal-overlay hidden" id="qty-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Sipariş Ekle</h2>
+        <button class="cart-close" onclick="closeQtyModal()">✕</button>
+      </div>
+      <div class="modal-body qty-modal-content">
+        <div class="qty-modal-product" id="qty-product-name"></div>
+        <div class="qty-modal-code" id="qty-product-code" style="color:var(--muted);font-size:12px;margin-bottom:16px"></div>
+        
+        <div class="form-group">
+          <label>Birim</label>
+          <div class="unit-selector" id="unit-selector">
+            <button class="unit-btn active" data-unit="kg">Kg</button>
+            <button class="unit-btn" data-unit="bağ">Bağ</button>
+            <button class="unit-btn" data-unit="adet">Adet</button>
+            <button class="unit-btn" data-unit="paket">Paket</button>
+            <button class="unit-btn" data-unit="kasa">Kasa</button>
+          </div>
+        </div>
+        
+        <div class="qty-input-group">
+          <button onclick="adjustQty(-1)">−</button>
+          <input type="number" id="qty-input" value="1" min="0.1" step="0.5">
+          <button onclick="adjustQty(1)">+</button>
+        </div>
+        <div class="qty-presets" id="qty-presets"></div>
+        
+        <div class="form-group" style="margin-top:16px;text-align:left">
+          <label>Açıklama (opsiyonel)</label>
+          <input type="text" id="qty-note" placeholder="Örn: iri olsun, küçük boy, soyulmuş..." style="width:100%">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeQtyModal()">İptal</button>
+        <button class="btn btn-primary" onclick="addToCart()">Sepete Ekle</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Add Customer Modal -->
+  <div class="modal-overlay hidden" id="customer-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Yeni Müşteri</h2>
+        <button class="cart-close" onclick="closeCustomerModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Müşteri Adı</label>
+          <input type="text" id="new-customer-name" placeholder="Örn: Seraf Vadi">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeCustomerModal()">İptal</button>
+        <button class="btn btn-primary" onclick="addCustomer()">Ekle</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- PDF Upload Modal -->
+  <div class="modal-overlay hidden" id="pdf-upload-modal" onclick="if(event.target===this)closePdfUpload()">
+    <div class="modal" style="max-width:800px;max-height:90vh;display:flex;flex-direction:column">
+      <div class="modal-header">
+        <h2>📄 PDF Sipariş Yükle</h2>
+        <button class="cart-close" onclick="closePdfUpload()">✕</button>
+      </div>
+      <div class="modal-body" style="flex:1;overflow-y:auto">
+        <!-- Upload Area -->
+        <div id="pdf-upload-area" class="pdf-upload-area">
+          <div class="upload-icon">📄</div>
+          <div class="upload-text">PDF dosyasını sürükle bırak</div>
+          <div class="upload-subtext">veya</div>
+          <label class="btn btn-primary upload-btn">
+            📁 Dosya Seç
+            <input type="file" accept=".pdf" onchange="handlePdfSelect(event)" hidden>
+          </label>
+          <div class="upload-hint">Huqqa, Seraf ve diğer tedarikçi formatları desteklenir</div>
+          <div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--border)">
+            <div style="color:var(--muted);font-size:12px;margin-bottom:8px">PDF çalışmıyorsa:</div>
+            <button class="btn btn-secondary" onclick="showPdfTextInput()" style="width:100%">📋 Metin Olarak Yapıştır</button>
+          </div>
+        </div>
+        
+        <!-- Text Input Alternative -->
+        <div id="pdf-text-input" style="display:none">
+          <div style="margin-bottom:12px;color:var(--muted);font-size:13px">
+            PDF'i aç → Ctrl+A (tümünü seç) → Ctrl+C (kopyala) → Buraya yapıştır:
+          </div>
+          <textarea id="pdf-text-area" placeholder="PDF metnini buraya yapıştırın..." style="width:100%;height:200px;background:var(--hover);border:1px solid var(--border);border-radius:8px;padding:12px;color:var(--text);font-family:inherit;font-size:13px;resize:vertical"></textarea>
+          <div style="margin-top:12px;display:flex;gap:8px">
+            <button class="btn btn-secondary" onclick="backToPdfUpload()">← Geri</button>
+            <button class="btn btn-primary" onclick="parseTextInput()" style="flex:1">🔍 Parse Et</button>
+          </div>
+        </div>
+        
+        <!-- Loading -->
+        <div id="pdf-loading" class="pdf-loading" style="display:none">
+          <div class="spinner"></div>
+          <div>Claude API ile okunuyor...</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:8px">Bu işlem birkaç saniye sürebilir</div>
+        </div>
+        
+        <!-- Results -->
+        <div id="pdf-results" style="display:none">
+          <div class="pdf-info" id="pdf-info"></div>
+          <div class="pdf-result-header">
+            <span id="pdf-result-count">0 ürün bulundu</span>
+            <button class="btn btn-secondary" onclick="resetPdfUpload()">🔄 Yeni PDF</button>
+          </div>
+          <table class="quick-table">
+            <thead>
+              <tr>
+                <th>ÜRÜN</th>
+                <th>MİKTAR</th>
+                <th>BİRİM</th>
+                <th>AÇIKLAMA</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="pdf-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closePdfUpload()">İptal</button>
+        <button class="btn btn-primary" id="pdf-add-btn" onclick="addPdfToCart()" disabled>🛒 Sepete Ekle</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- All Orders Modal -->
+  <div class="modal-overlay hidden" id="orders-modal">
+    <div class="modal" style="max-width:800px">
+      <div class="modal-header">
+        <h2>📋 Tüm Siparişler</h2>
+        <button class="cart-close" onclick="closeOrdersModal()">✕</button>
+      </div>
+      <div class="modal-body orders-summary" id="orders-summary"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeOrdersModal()">Kapat</button>
+        <button class="btn btn-danger" onclick="clearAllOrders()">🗑️ Tümünü Sil</button>
+        <button class="btn btn-primary" onclick="exportExcel()">📥 Excel İndir</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Order Modal -->
+  <div class="modal-overlay hidden" id="quick-order-modal">
+    <div class="modal" style="max-width:700px">
+      <div class="modal-header">
+        <h2>📝 Hızlı Sipariş Girişi</h2>
+        <button class="cart-close" onclick="closeQuickOrder()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Sipariş Listesini Yapıştır</label>
+          <textarea id="quick-order-text" class="quick-textarea" placeholder="Örnek:
+5 kg domates
+salatalık 3 kg
+2 bağ maydanoz
+dereotu 3 bağ taze olsun
+biber köy 2 kg iri
+çilek 1 kg"></textarea>
+        </div>
+        <button class="btn btn-primary" onclick="parseQuickOrder()" style="width:100%">✨ Parse Et</button>
+        
+        <div id="quick-order-result" class="hidden">
+          <div class="quick-result-header">
+            <span id="quick-result-count"></span>
+            <button class="btn btn-secondary" style="padding:6px 12px;font-size:12px" onclick="addQuickRow()">➕ Satır Ekle</button>
+          </div>
+          <div class="quick-table-wrap">
+            <table class="quick-table" id="quick-table">
+              <thead>
+                <tr>
+                  <th>Ürün</th>
+                  <th>Miktar</th>
+                  <th>Birim</th>
+                  <th>Açıklama</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="quick-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeQuickOrder()">İptal</button>
+        <button class="btn btn-primary" id="quick-add-btn" onclick="addQuickToCart()" disabled>🛒 Sepete Ekle</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Product Picker Modal -->
+  <div class="modal-overlay hidden" id="product-picker-modal" onclick="if(event.target===this)closeProductPicker()">
+    <div class="modal" style="max-width:600px;max-height:80vh;display:flex;flex-direction:column">
+      <div class="modal-header">
+        <h2>🔍 Ürün Seç</h2>
+        <button class="cart-close" onclick="closeProductPicker()">✕</button>
+      </div>
+      <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
+        <input type="text" id="picker-search" placeholder="Ürün ara... (isim veya kod)" 
+               oninput="renderPickerProducts(this.value)" 
+               style="width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:14px">
+      </div>
+      <div id="picker-products" style="flex:1;overflow-y:auto;padding:12px"></div>
+    </div>
+  </div>
+
+  <script>
+    // ==================== DATA ====================
+    const CATEGORIES = {
+      'Domates': ['DOM', 'DOMB', 'DOMİ', 'DOMK', 'DOMKC', 'DOML', 'DOMP', 'DOMPP', 'DOMPT', 'DOMPY', 'DOMS', 'DOMSC', 'DOMSİ', 'DOMSL', 'ÇER', 'KOK', 'KOKK', 'KOKS', 'KOKSS', 'KOKT', 'ŞEK', 'YER', 'PEM'],
+      'Biber': ['ÇAR', 'DOL', 'KIR', 'KIL', 'YAĞ', 'CA', 'CAK', 'CAS', 'BİBJ', 'JAL', 'MEK', 'Şİ', 'SİV', 'CİN', 'MAC', 'MCR', 'SAM', 'KIRO'],
+      'Yeşillik': ['MAY', 'MAYF', 'MAYFP', 'DER', 'DERO', 'NA', 'ROK', 'ROK250', 'ROKB', 'ISP', 'ISPB', 'ISPB150', 'ISPD', 'FES', 'FES100', 'FEST', 'KİŞ', 'KİŞT', 'KEK', 'KEKT', 'TAR', 'TER', 'TERA', 'Bİ', 'BİBT', 'SEM', 'KK', 'KUZ', 'KUZA', 'KUZK', 'KUZK500', 'R', 'RT', 'PZ', 'PZB', 'IS', 'EB', 'EBE', 'AK', 'MİKR', 'RAK', 'LG'],
+      'Marul': ['MAR', 'MARÇ', 'MARO', 'MARY', 'MARYAĞ', 'MARYP', 'GS', 'KIV', 'KIVV', 'LO', 'MAS', 'KGÜL', 'YGÜL', 'MARGK', 'END', 'AYS', 'PO', 'KALE150', 'KALE500'],
+      'Meyve': ['EL', 'ELA', 'ELF', 'ELG', 'ELGALA', 'ELGR', 'ELP', 'ELS', 'GRS', 'ARM', 'ARMA', 'ARMD', 'ARMS', 'ARMSİ', 'AY', 'AYT', 'MUZİ', 'MUZY', 'POR', 'PORK', 'PORS', 'LİM', 'LİM2', 'LİMA', 'LİMF', 'LİMİ', 'LİMS', 'Lİ', 'MAN', 'MANİ', 'MANM', 'MANO', 'MANS', 'GR', 'GRY11', 'NAR', 'NARS', 'Kİ', 'MNG', 'MNGG', 'AV', 'AVA', 'AVV', 'ANS', 'ÇİL', 'ÇİLK', 'AÇ', 'ŞEF', 'NEK', 'NEKB', 'ÜZ', 'ÜZF', 'ÜZM', 'ÜZR', 'ÜZS', 'YM', 'AHU', 'FR', 'BÖĞ', 'BÖĞ125', 'POM', 'KAM', 'KAV', 'KAVD', 'KAVK', 'KAVZ', 'KAR', 'KARÇ', 'KARP', 'AKAR', 'AKARÇ', 'KİR', 'VİŞ', 'ERK', 'ERKA', 'ERKK', 'ERKM', 'İNC', 'KAY', 'DUT', 'MUŞ', 'HU', 'BARS', 'BART', 'HÜN', 'KIZ', 'ALIÇ', 'MER', 'ÇF', 'PAS', 'Pİ', 'PAP', 'HİN', 'ROZ', 'PEP', 'CEV', 'KES', 'FIN', 'YF', 'ÇA'],
+      'Sebze': ['SAL', 'Sİ', 'HV', 'HVB', 'HVÇ', 'HVİ', 'HVK', 'HVKI', 'HVO', 'HVS', 'HVT', 'P', 'PB', 'PAG', 'PK', 'KP', 'TP', 'KB', 'KBA', 'KBB', 'KBK', 'KBM', 'KBS', 'BAL', 'BALA', 'BALT', 'PAT', 'PATK', 'PATKEB', 'PATM', 'PAB', 'PIR', 'BÜ', 'BRK', 'KA', 'LAH', 'LAHO', 'KR', 'KRK', 'KL', 'BRÜ', 'KER', 'KERİ', 'KERO', 'KERS', 'SO', 'SOB', 'SOG', 'SOK', 'SOM', 'TS', 'TS2', 'TSA', 'TSF', 'ARP', 'ARPS', 'SAR', 'SARB', 'SARİ', 'SARS', 'SART', 'PAN', 'PANY', 'ALA', 'ŞAL', 'ENG', 'BAK', 'BAKİ', 'BEZ', 'BEZF', 'BEZS', 'FAS', 'FASA', 'FASC', 'FASF', 'FASS', 'FASŞ', 'ÇAL', 'BON', 'BAR', 'BARN', 'BÖ', 'BÖD', 'BAM', 'ARK', 'ZEN', 'SOY', 'MN', 'MNÇ', 'MNİ', 'MNİS', 'MNKE', 'MNP', 'MTR', 'TRP', 'STRP', 'TRPB', 'TRPÇ', 'TRPF', 'TRPK', 'TRPS', 'AC', 'AZ', 'REZ', 'MIS', 'KUŞ', 'YEL', 'KUD', 'KEL', 'KPAL', 'YPAL', 'DEM', 'ALT', 'Cİ']
+    };
+    
+    const PRODUCTS = {
+      "AC":{name:"Acur",unit:"kg",emoji:"🥒"},"AÇ":{name:"Altın Çilek",unit:"kg",emoji:"🍓"},"ADA":{name:"Ada Çayı 25gr",unit:"paket",emoji:"🌿"},"AHU":{name:"Ahududu 125gr",unit:"paket",emoji:"🫐"},"AK":{name:"Akdeniz Yeşilliği 250gr",unit:"paket",emoji:"🥬"},"AKAR":{name:"Ala Karpuz",unit:"kg",emoji:"🍉"},"AKARÇ":{name:"Çekirdeksiz Ala Karpuz",unit:"kg",emoji:"🍉"},"ALA":{name:"Alabaş",unit:"kg",emoji:"🥬"},"ALIÇ":{name:"Alıç",unit:"kg",emoji:"🍒"},"ALT":{name:"Pshalis 100gr",unit:"paket",emoji:"🍇"},"ANS":{name:"Ananas",unit:"adet",emoji:"🍍"},"ARK":{name:"Araka",unit:"kg",emoji:"🫛"},"ARM":{name:"Armut",unit:"kg",emoji:"🍐"},"ARMA":{name:"Armut Ankara",unit:"kg",emoji:"🍐"},"ARMD":{name:"Armut Deveci",unit:"kg",emoji:"🍐"},"ARMS":{name:"Armut Santamari",unit:"kg",emoji:"🍐"},"ARMSİ":{name:"Armut Santamari",unit:"kg",emoji:"🍐"},"ARP":{name:"Soğan Arpacık",unit:"kg",emoji:"🧅"},"ARPS":{name:"Arpacık Soğan Soyulmuş",unit:"kg",emoji:"🧅"},"AV":{name:"Avokado",unit:"kg",emoji:"🥑"},"AVA":{name:"Avokado",unit:"kg",emoji:"🥑"},"AVV":{name:"Avokado Verita",unit:"kg",emoji:"🥑"},"AY":{name:"Ayva",unit:"kg",emoji:"🍐"},"AYS":{name:"Aysberg",unit:"adet",emoji:"🥬"},"AYT":{name:"Ayva Taze",unit:"kg",emoji:"🍐"},"AZ":{name:"Azman",unit:"kg",emoji:"🥒"},"BAK":{name:"Bakla",unit:"kg",emoji:"🫛"},"BAKİ":{name:"Bakla İç",unit:"kg",emoji:"🫛"},"BAL":{name:"Bal Kabağı",unit:"kg",emoji:"🎃"},"BALA":{name:"Bal Kabağı Ayıklanmış",unit:"kg",emoji:"🎃"},"BALT":{name:"Bal Kabağı Turuncu",unit:"kg",emoji:"🎃"},"BAM":{name:"Bamya",unit:"kg",emoji:"🥒"},"BAR":{name:"Barbunya",unit:"kg",emoji:"🫘"},"BARN":{name:"Barbunya",unit:"kg",emoji:"🫘"},"BARS":{name:"Sarı Bardak Hurma",unit:"kg",emoji:"🍯"},"BART":{name:"Turuncu Bardak Hurma",unit:"kg",emoji:"🍯"},"BEZ":{name:"Bezelye",unit:"kg",emoji:"🫛"},"BEZF":{name:"Bezelye Filizi",unit:"kg",emoji:"🌱"},"BEZS":{name:"Bezelye Sultani",unit:"kg",emoji:"🫛"},"Bİ":{name:"Biberiye",unit:"bağ",emoji:"🌿"},"BİBJ":{name:"Biber Jalapeno",unit:"kg",emoji:"🌶️"},"BİBT":{name:"Biberiye Taze 25gr",unit:"paket",emoji:"🌿"},"BON":{name:"Fasulye Boncuk",unit:"kg",emoji:"🫘"},"BÖ":{name:"Börülce",unit:"kg",emoji:"🫘"},"BÖD":{name:"Börülce",unit:"kg",emoji:"🫘"},"BÖĞ":{name:"Böğürtlen",unit:"kg",emoji:"🫐"},"BÖĞ125":{name:"Böğürtlen 125gr",unit:"paket",emoji:"🫐"},"BRK":{name:"Brokolini",unit:"kg",emoji:"🥦"},"BRÜ":{name:"Brüksel Lahanası",unit:"kg",emoji:"🥬"},"BÜ":{name:"Brokoli",unit:"kg",emoji:"🥦"},"CA":{name:"Biber Kaliforniya",unit:"kg",emoji:"🫑"},"CAK":{name:"Kaliforniya Kırmızı",unit:"kg",emoji:"🫑"},"CAS":{name:"Kaliforniya Sarı",unit:"kg",emoji:"🫑"},"CEV":{name:"Ceviz",unit:"kg",emoji:"🌰"},"Cİ":{name:"Cibes 500gr",unit:"paket",emoji:"🌱"},"CİN":{name:"Cin Biber",unit:"kg",emoji:"🌶️"},"Ç":{name:"Çiçek",unit:"adet",emoji:"🌸"},"ÇA":{name:"Çağla",unit:"kg",emoji:"🌰"},"ÇAL":{name:"Fasulye Taze Çalı",unit:"kg",emoji:"🫘"},"ÇAR":{name:"Biber Çarliston",unit:"kg",emoji:"🌶️"},"ÇER":{name:"Domates Cherry",unit:"kg",emoji:"🍅"},"ÇF":{name:"Passionfruit",unit:"adet",emoji:"🍇"},"ÇİL":{name:"Çilek",unit:"kg",emoji:"🍓"},"ÇİLK":{name:"Çilek Küçük",unit:"kg",emoji:"🍓"},"ÇU":{name:"Çuval",unit:"adet",emoji:"📦"},"DEM":{name:"Demirhindi",unit:"kg",emoji:"🌿"},"DER":{name:"Dereotu",unit:"bağ",emoji:"🌿"},"DERO":{name:"Dereotu Organik",unit:"bağ",emoji:"🌿"},"DOL":{name:"Biber Dolma",unit:"kg",emoji:"🫑"},"DOM":{name:"Domates",unit:"kg",emoji:"🍅"},"DOMB":{name:"Domates Beef",unit:"kg",emoji:"🍅"},"DOMİ":{name:"Domates",unit:"kg",emoji:"🍅"},"DOMK":{name:"Domates Köy",unit:"kg",emoji:"🍅"},"DOMKC":{name:"Domates Kırmızı Calabash",unit:"kg",emoji:"🍅"},"DOML":{name:"Domates Lüks",unit:"kg",emoji:"🍅"},"DOMP":{name:"Domates Pembe",unit:"kg",emoji:"🍅"},"DOMPP":{name:"Domates Plastik",unit:"kg",emoji:"🍅"},"DOMPT":{name:"Domates Pembe Topraksız",unit:"kg",emoji:"🍅"},"DOMPY":{name:"Domates Pembe Yeşil",unit:"kg",emoji:"🍅"},"DOMS":{name:"Domates Salkım",unit:"kg",emoji:"🍅"},"DOMSC":{name:"Domates Sarı Calabash",unit:"kg",emoji:"🍅"},"DOMSİ":{name:"Domates Salkım",unit:"kg",emoji:"🍅"},"DOMSL":{name:"Domates Salkım Lüks",unit:"kg",emoji:"🍅"},"DUT":{name:"Dut",unit:"kg",emoji:"🫐"},"EB":{name:"Ebegümeci",unit:"kg",emoji:"🌿"},"EBE":{name:"Ebegümeci",unit:"kg",emoji:"🌿"},"EL":{name:"Elma",unit:"kg",emoji:"🍎"},"ELA":{name:"Elma Amasya",unit:"kg",emoji:"🍎"},"ELF":{name:"Elma Fuji",unit:"kg",emoji:"🍎"},"ELG":{name:"Elma Golden",unit:"kg",emoji:"🍏"},"ELGALA":{name:"Elma Gala",unit:"kg",emoji:"🍎"},"ELGR":{name:"Elma Granny Smith",unit:"kg",emoji:"🍏"},"ELP":{name:"Elma Pink Lady",unit:"kg",emoji:"🍎"},"ELS":{name:"Elma Starking",unit:"kg",emoji:"🍎"},"END":{name:"Endivyen",unit:"kg",emoji:"🥬"},"ENG":{name:"Enginar",unit:"adet",emoji:"🌿"},"ERK":{name:"Erik",unit:"kg",emoji:"🍑"},"ERKA":{name:"Erik Anjelika",unit:"kg",emoji:"🍑"},"ERKK":{name:"Erik",unit:"kg",emoji:"🍑"},"ERKM":{name:"Erik Mürdüm",unit:"kg",emoji:"🍑"},"FAS":{name:"Fasulye",unit:"kg",emoji:"🫘"},"FASA":{name:"Fasulye Ayşe Kadın",unit:"kg",emoji:"🫘"},"FASC":{name:"Fasulye Cino",unit:"kg",emoji:"🫘"},"FASF":{name:"Fasulye Fransız",unit:"kg",emoji:"🫘"},"FASS":{name:"Fasulye Sarıkız",unit:"kg",emoji:"🫘"},"FASŞ":{name:"Fasulye Şeker",unit:"kg",emoji:"🫘"},"FES":{name:"Fesleğen",unit:"bağ",emoji:"🌿"},"FES100":{name:"Fesleğen 100gr",unit:"paket",emoji:"🌿"},"FEST":{name:"Fesleğen Taze 25gr",unit:"paket",emoji:"🌿"},"FIN":{name:"Yeşil Kabuklu Fındık",unit:"kg",emoji:"🌰"},"FR":{name:"Frambuaz",unit:"kg",emoji:"🫐"},"GR":{name:"Greyfurt",unit:"kg",emoji:"🍊"},"GRS":{name:"Elma Gransimit",unit:"kg",emoji:"🍏"},"GRY11":{name:"Greyfurt",unit:"kg",emoji:"🍊"},"GS":{name:"Göbek Marul",unit:"adet",emoji:"🥬"},"HİN":{name:"Hindistan Cevizi",unit:"adet",emoji:"🥥"},"HU":{name:"Hurma",unit:"kg",emoji:"🍯"},"HÜN":{name:"Hünnap",unit:"kg",emoji:"🍒"},"HV":{name:"Havuç",unit:"kg",emoji:"🥕"},"HVB":{name:"Havuç Baby",unit:"kg",emoji:"🥕"},"HVÇ":{name:"Havuç Çıtır",unit:"kg",emoji:"🥕"},"HVİ":{name:"Havuç İri",unit:"kg",emoji:"🥕"},"HVK":{name:"Havuç",unit:"kg",emoji:"🥕"},"HVKI":{name:"Havuç Kırık",unit:"kg",emoji:"🥕"},"HVO":{name:"Havuç Organik",unit:"kg",emoji:"🥕"},"HVS":{name:"Havuç Siyah",unit:"kg",emoji:"🥕"},"HVT":{name:"Havuç Takoz",unit:"kg",emoji:"🥕"},"IS":{name:"Isırgan",unit:"kg",emoji:"🌿"},"ISP":{name:"Ispanak",unit:"kg",emoji:"🥬"},"ISPB":{name:"Ispanak Baby 500gr",unit:"paket",emoji:"🥬"},"ISPB150":{name:"Ispanak Baby 150gr",unit:"paket",emoji:"🥬"},"ISPD":{name:"Ispanak D.",unit:"kg",emoji:"🥬"},"İNC":{name:"İncir",unit:"kg",emoji:"🍇"},"JAL":{name:"Jalapeno Biber",unit:"kg",emoji:"🌶️"},"KA":{name:"Karnabahar",unit:"kg",emoji:"🥦"},"KAL":{name:"Kavun Kallavi",unit:"kg",emoji:"🍈"},"KALE150":{name:"Kale Yaprağı 150gr",unit:"paket",emoji:"🥬"},"KALE500":{name:"Kale Yaprağı 500gr",unit:"paket",emoji:"🥬"},"KAM":{name:"Kamkat",unit:"kg",emoji:"🍊"},"KAR":{name:"Karpuz",unit:"kg",emoji:"🍉"},"KARÇ":{name:"Karpuz",unit:"kg",emoji:"🍉"},"KARP":{name:"Karpuz Plastik",unit:"kg",emoji:"🍉"},"KAV":{name:"Kavun",unit:"kg",emoji:"🍈"},"KAVD":{name:"Kavun Dondurmalık",unit:"kg",emoji:"🍈"},"KAVK":{name:"Kavun Kırkağaç",unit:"kg",emoji:"🍈"},"KAVZ":{name:"Kavun Zümre",unit:"kg",emoji:"🍈"},"KAY":{name:"Kayısı",unit:"kg",emoji:"🍑"},"KB":{name:"Kabak",unit:"kg",emoji:"🥒"},"KBA":{name:"Kabak Ampul",unit:"kg",emoji:"🥒"},"KBB":{name:"Kabak Baby",unit:"kg",emoji:"🥒"},"KBK":{name:"Kabak Kara",unit:"kg",emoji:"🥒"},"KBM":{name:"Kabak Mini",unit:"kg",emoji:"🥒"},"KBS":{name:"Kabak Sarı Paket",unit:"paket",emoji:"🥒"},"KEK":{name:"Kekik Taze",unit:"bağ",emoji:"🌿"},"KEKT":{name:"Kekik Taze 25gr",unit:"paket",emoji:"🌿"},"KEL":{name:"Kelek",unit:"kg",emoji:"🍈"},"KER":{name:"Kereviz",unit:"kg",emoji:"🥬"},"KERİ":{name:"Kereviz",unit:"kg",emoji:"🥬"},"KERO":{name:"Kereviz Organik",unit:"kg",emoji:"🥬"},"KERS":{name:"Kereviz Sap",unit:"kg",emoji:"🥬"},"KES":{name:"Kestane",unit:"kg",emoji:"🌰"},"KGÜL":{name:"Marul Gül Kırmızı",unit:"adet",emoji:"🥬"},"Kİ":{name:"Kivi",unit:"kg",emoji:"🥝"},"KIL":{name:"Biber Kıl",unit:"kg",emoji:"🌶️"},"KIR":{name:"Biber Kırmızı",unit:"kg",emoji:"🌶️"},"KİR":{name:"Kiraz",unit:"kg",emoji:"🍒"},"KIRO":{name:"Biber Kappi",unit:"kg",emoji:"🌶️"},"KİŞ":{name:"Kişniş",unit:"bağ",emoji:"🌿"},"KİŞT":{name:"Kişniş Taze 25gr",unit:"paket",emoji:"🌿"},"KIV":{name:"Kıvırcık",unit:"adet",emoji:"🥬"},"KIVV":{name:"Kıvırcık Çıkma",unit:"adet",emoji:"🥬"},"KIZ":{name:"Kızılcık",unit:"kg",emoji:"🍒"},"KK":{name:"Kuzukulağı",unit:"kg",emoji:"🌿"},"KL":{name:"Lahana Kara",unit:"kg",emoji:"🥬"},"KOK":{name:"Domates Kokteyl",unit:"kg",emoji:"🍅"},"KOKK":{name:"Domates Kokteyl Kaplan",unit:"kg",emoji:"🍅"},"KOKS":{name:"Domates Kokteyl Sarı",unit:"kg",emoji:"🍅"},"KOKSS":{name:"Siyah Kokteyl",unit:"kg",emoji:"🍅"},"KOKT":{name:"Domates Kokteyl Turuncu",unit:"kg",emoji:"🍅"},"KOL":{name:"Koli",unit:"adet",emoji:"📦"},"KP":{name:"Patates Kızartmalık",unit:"kg",emoji:"🥔"},"KPAL":{name:"Kırmızı Palamut",unit:"kg",emoji:"🌿"},"KR":{name:"Lahana Kırmızı",unit:"kg",emoji:"🥬"},"KRK":{name:"Kırmızı Lahana",unit:"kg",emoji:"🥬"},"KUD":{name:"Kudret Narı",unit:"kg",emoji:"🍈"},"KUŞ":{name:"Kuşkonmaz",unit:"bağ",emoji:"🌿"},"KUZ":{name:"Kuzukulağı",unit:"kg",emoji:"🌿"},"KUZA":{name:"Kuzukulağı Ayıklanmış",unit:"kg",emoji:"🌿"},"KUZK":{name:"Kuzukulağı Kırmızı 150gr",unit:"paket",emoji:"🌿"},"KUZK500":{name:"Kuzukulağı Kırmızı 500gr",unit:"paket",emoji:"🌿"},"LAH":{name:"Lahana Beyaz",unit:"kg",emoji:"🥬"},"LAHO":{name:"Lahana Organik",unit:"kg",emoji:"🥬"},"LG":{name:"Lemon Grass",unit:"adet",emoji:"🌿"},"Lİ":{name:"Lime",unit:"kg",emoji:"🍋"},"LİM":{name:"Limon",unit:"kg",emoji:"🍋"},"LİM2":{name:"Limon İki",unit:"kg",emoji:"🍋"},"LİMA":{name:"Limon Açık",unit:"kg",emoji:"🍋"},"LİMF":{name:"Limon File",unit:"kg",emoji:"🍋"},"LİMİ":{name:"Limon",unit:"kg",emoji:"🍋"},"LİMS":{name:"Limon Sıkmalık",unit:"kg",emoji:"🍋"},"LO":{name:"Lolo Rosso",unit:"adet",emoji:"🥬"},"MAC":{name:"Macar Biber",unit:"kg",emoji:"🌶️"},"MAN":{name:"Mandalina",unit:"kg",emoji:"🍊"},"MANİ":{name:"Mandalina İzmir",unit:"kg",emoji:"🍊"},"MANM":{name:"Mandalina Murcott",unit:"kg",emoji:"🍊"},"MANO":{name:"Mandalina Okitsu",unit:"kg",emoji:"🍊"},"MANS":{name:"Mandalina Satsuma",unit:"kg",emoji:"🍊"},"MAR":{name:"Marul",unit:"adet",emoji:"🥬"},"MARÇ":{name:"Marul Çin",unit:"adet",emoji:"🥬"},"MARGK":{name:"Marul Gül Kırmızı",unit:"adet",emoji:"🥬"},"MARO":{name:"Marul Organik",unit:"adet",emoji:"🥬"},"MARY":{name:"Marul Yedikule",unit:"adet",emoji:"🥬"},"MARYAĞ":{name:"Marul Yağlı",unit:"adet",emoji:"🥬"},"MARYP":{name:"Marul Yedikule Paket",unit:"paket",emoji:"🥬"},"MAS":{name:"Maskolin",unit:"kg",emoji:"🥬"},"MAY":{name:"Maydanoz",unit:"bağ",emoji:"🌿"},"MAYF":{name:"Maydanoz Frenk",unit:"bağ",emoji:"🌿"},"MAYFP":{name:"Maydanoz Frenk Paket",unit:"paket",emoji:"🌿"},"MCR":{name:"Biber Macar",unit:"kg",emoji:"🌶️"},"MEK":{name:"Biber Meksika",unit:"kg",emoji:"🌶️"},"MER":{name:"Malta Eriği",unit:"kg",emoji:"🍑"},"MİKR":{name:"Mikrofiliz Renkli",unit:"paket",emoji:"🌱"},"MIS":{name:"Mısır Taze",unit:"adet",emoji:"🌽"},"MN":{name:"Mantar",unit:"kg",emoji:"🍄"},"MNÇ":{name:"Mantar Çamlıca",unit:"kg",emoji:"🍄"},"MNG":{name:"Mango",unit:"adet",emoji:"🥭"},"MNGG":{name:"Mango Gurme",unit:"adet",emoji:"🥭"},"MNİ":{name:"Mantar",unit:"kg",emoji:"🍄"},"MNİS":{name:"Mantar İstiridye",unit:"kg",emoji:"🍄"},"MNKE":{name:"Mantar Kestane",unit:"kg",emoji:"🍄"},"MNP":{name:"Mantar Porçini",unit:"kg",emoji:"🍄"},"MTR":{name:"Mantar",unit:"kg",emoji:"🍄"},"MUŞ":{name:"Muşmula",unit:"kg",emoji:"🍑"},"MUZİ":{name:"Muz İthal",unit:"kg",emoji:"🍌"},"MUZY":{name:"Muz Yerli",unit:"kg",emoji:"🍌"},"NA":{name:"Nane",unit:"bağ",emoji:"🌿"},"NAR":{name:"Nar",unit:"kg",emoji:"🍎"},"NARS":{name:"Nar Sıkmalık",unit:"kg",emoji:"🍎"},"NEK":{name:"Nektarin",unit:"kg",emoji:"🍑"},"NEKB":{name:"Nektarin Beyaz",unit:"kg",emoji:"🍑"},"P":{name:"Patates",unit:"kg",emoji:"🥔"},"PAB":{name:"Patlıcan Bostan",unit:"kg",emoji:"🍆"},"PAG":{name:"Patates Agria",unit:"kg",emoji:"🥔"},"PAN":{name:"Pancar",unit:"kg",emoji:"🥬"},"PANY":{name:"Pancar Yapraklı",unit:"kg",emoji:"🥬"},"PAP":{name:"Papaya",unit:"adet",emoji:"🍈"},"PAS":{name:"Passionfruit",unit:"adet",emoji:"🍇"},"PAT":{name:"Patlıcan",unit:"kg",emoji:"🍆"},"PATK":{name:"Patlıcan Koli",unit:"koli",emoji:"🍆"},"PATKEB":{name:"Patlıcan Kebaplık",unit:"kg",emoji:"🍆"},"PATM":{name:"Patlıcan Mor",unit:"kg",emoji:"🍆"},"PB":{name:"Patates Baby",unit:"kg",emoji:"🥔"},"PEM":{name:"Domates Organik",unit:"kg",emoji:"🍅"},"PEP":{name:"Pepino",unit:"kg",emoji:"🍈"},"Pİ":{name:"Pitahaya",unit:"adet",emoji:"🍇"},"PIR":{name:"Pırasa",unit:"kg",emoji:"🥬"},"PİR":{name:"Piramit",unit:"adet",emoji:"🍅"},"PK":{name:"Patates Kumpirlık",unit:"kg",emoji:"🥔"},"PO":{name:"Pollorosso",unit:"adet",emoji:"🥬"},"POM":{name:"Pomelo",unit:"adet",emoji:"🍊"},"POR":{name:"Portakal",unit:"kg",emoji:"🍊"},"PORK":{name:"Portakal Kan",unit:"kg",emoji:"🍊"},"PORS":{name:"Portakal Sıkmalık",unit:"kg",emoji:"🍊"},"PZ":{name:"Pazı",unit:"bağ",emoji:"🥬"},"PZB":{name:"Pazı Bağ",unit:"bağ",emoji:"🥬"},"R":{name:"Reyhan",unit:"bağ",emoji:"🌿"},"RAK":{name:"Rakula 125gr",unit:"paket",emoji:"🥬"},"REZ":{name:"Rezene",unit:"kg",emoji:"🌿"},"ROK":{name:"Roka",unit:"kg",emoji:"🥬"},"ROK250":{name:"Roka Ayıklanmış 250gr",unit:"paket",emoji:"🥬"},"ROKB":{name:"Roka Baby",unit:"kg",emoji:"🥬"},"ROZ":{name:"Rosamaline",unit:"kg",emoji:"🍎"},"RT":{name:"Reyhan Taze 25gr",unit:"paket",emoji:"🌿"},"SAL":{name:"Salatalık",unit:"kg",emoji:"🥒"},"SAM":{name:"Samandağ Biberi",unit:"kg",emoji:"🌶️"},"SAR":{name:"Sarımsak",unit:"kg",emoji:"🧄"},"SARB":{name:"Sarımsak Baş",unit:"kg",emoji:"🧄"},"SARİ":{name:"Sarımsak İthal",unit:"kg",emoji:"🧄"},"SARS":{name:"Sarımsak Soyulmuş",unit:"kg",emoji:"🧄"},"SART":{name:"Sarımsak Taze",unit:"kg",emoji:"🧄"},"SEM":{name:"Semizotu",unit:"kg",emoji:"🌿"},"Sİ":{name:"Salatalık Silor",unit:"kg",emoji:"🥒"},"SİV":{name:"Biber Sivri",unit:"kg",emoji:"🌶️"},"SK":{name:"Sandık",unit:"adet",emoji:"📦"},"SO":{name:"Soğan Kuru",unit:"kg",emoji:"🧅"},"SOB":{name:"Soğan Balık",unit:"kg",emoji:"🧅"},"SOG":{name:"Soğan Gümüş",unit:"kg",emoji:"🧅"},"SOK":{name:"Soğan Kırmızı",unit:"kg",emoji:"🧅"},"SOM":{name:"Soğan Mor",unit:"kg",emoji:"🧅"},"SOY":{name:"Soya Filizi 500gr",unit:"paket",emoji:"🌱"},"STRP":{name:"Turp",unit:"bağ",emoji:"🥬"},"ŞAL":{name:"Şalgam",unit:"kg",emoji:"🥬"},"ŞEF":{name:"Şeftali",unit:"kg",emoji:"🍑"},"ŞEK":{name:"Şeker Kokteyl",unit:"kg",emoji:"🍅"},"Şİ":{name:"Şili Biber",unit:"kg",emoji:"🌶️"},"TAR":{name:"Tarhun Otu",unit:"bağ",emoji:"🌿"},"TER":{name:"Tere",unit:"bağ",emoji:"🌿"},"TERA":{name:"Tere Ayıklanmış",unit:"kg",emoji:"🌿"},"TP":{name:"Tatlı Patates",unit:"kg",emoji:"🥔"},"TR":{name:"Torba",unit:"adet",emoji:"📦"},"TRP":{name:"Turp",unit:"bağ",emoji:"🥬"},"TRPB":{name:"Turp Beyaz",unit:"kg",emoji:"🥬"},"TRPÇ":{name:"Turp Çin",unit:"kg",emoji:"🥬"},"TRPF":{name:"Turp Fındık",unit:"kg",emoji:"🥬"},"TRPK":{name:"Turp Kırmızı",unit:"kg",emoji:"🥬"},"TRPS":{name:"Turp Siyah",unit:"kg",emoji:"🥬"},"TS":{name:"Soğan Taze",unit:"bağ",emoji:"🧅"},"TS2":{name:"Taze Soğan 2.",unit:"bağ",emoji:"🧅"},"TSA":{name:"Taze Soğan Ayıklanmış",unit:"kg",emoji:"🧅"},"TSF":{name:"Soğan Frenk 25gr",unit:"paket",emoji:"🧅"},"ÜZ":{name:"Üzüm",unit:"kg",emoji:"🍇"},"ÜZF":{name:"Üzüm Frenk",unit:"kg",emoji:"🍇"},"ÜZM":{name:"Üzüm Mor",unit:"kg",emoji:"🍇"},"ÜZR":{name:"Üzüm Redglob",unit:"kg",emoji:"🍇"},"ÜZS":{name:"Üzüm Siyah",unit:"kg",emoji:"🍇"},"VİŞ":{name:"Vişne",unit:"kg",emoji:"🍒"},"YAĞ":{name:"Biber Köy",unit:"kg",emoji:"🌶️"},"YAP":{name:"Yaprak",unit:"kg",emoji:"🍃"},"YAPÇ":{name:"Yaprak Salamura",unit:"kg",emoji:"🍃"},"YAPK":{name:"Yaprak Salamura",unit:"kg",emoji:"🍃"},"YÇ":{name:"Yenilebilir Çiçek",unit:"paket",emoji:"🌸"},"YEL":{name:"Yer Elması",unit:"kg",emoji:"🥔"},"YER":{name:"Domates Yer",unit:"kg",emoji:"🍅"},"YF":{name:"Yeşil Fındık",unit:"kg",emoji:"🌰"},"YGÜL":{name:"Marul Gül Yeşil",unit:"adet",emoji:"🥬"},"YM":{name:"Yaban Mersini 125gr",unit:"paket",emoji:"🫐"},"YPAL":{name:"Yeşil Palamut",unit:"kg",emoji:"🌿"},"ZEN":{name:"Zencefil",unit:"kg",emoji:"🫚"},"ZEY":{name:"Zeytin",unit:"kg",emoji:"🫒"}
+    };
+    
+    const DEFAULT_CUSTOMERS = [
+      'Huqqa Emaar Mutfak', 'Huqqa Emaar Bar', 
+      'Huqqa Emirgan Mutfak', 'Huqqa Emirgan Bar',
+      'Huqqa Kuruçeşme Mutfak', 'Huqqa Kuruçeşme Bar',
+      'Seraf Vadi', 'Seraf Mahmutbey', 'Damlıca Çiftliği'
+    ];
+    
+    // ==================== STATE ====================
+    let customers = JSON.parse(localStorage.getItem('zenya_customers')) || DEFAULT_CUSTOMERS;
+    let currentCustomer = customers[0];
+    let cart = []; // Geçici sepet
+    let allOrders = JSON.parse(localStorage.getItem('zenya_all_orders')) || []; // Tüm onaylanmış siparişler
+    let currentCategory = 'Tümü';
+    let selectedProduct = null;
+    
+    // ==================== INIT ====================
+    function init() {
+      renderCustomers();
+      renderCategories();
+      renderProducts();
+      updateCartUI();
+    }
+    
+    // ==================== CUSTOMERS ====================
+    function renderCustomers() {
+      const list = document.getElementById('customer-list');
+      list.innerHTML = customers.map(c => {
+        const count = allOrders.filter(o => o.customer === c).length;
+        return `<button class="customer-btn ${c === currentCustomer ? 'active' : ''}" onclick="selectCustomer('${c}')">
+          ${c} ${count ? `<span class="count">${count}</span>` : ''}
+        </button>`;
+      }).join('');
+      document.getElementById('current-customer-name').textContent = currentCustomer;
+    }
+    
+    function selectCustomer(name) {
+      currentCustomer = name;
+      renderCustomers();
+    }
+    
+    function showAddCustomer() {
+      document.getElementById('customer-modal').classList.remove('hidden');
+      document.getElementById('new-customer-name').value = '';
+      document.getElementById('new-customer-name').focus();
+    }
+    
+    function closeCustomerModal() {
+      document.getElementById('customer-modal').classList.add('hidden');
+    }
+    
+    function addCustomer() {
+      const name = document.getElementById('new-customer-name').value.trim();
+      if (!name) return alert('Müşteri adı girin!');
+      if (customers.includes(name)) return alert('Bu müşteri zaten var!');
+      customers.push(name);
+      localStorage.setItem('zenya_customers', JSON.stringify(customers));
+      currentCustomer = name;
+      renderCustomers();
+      closeCustomerModal();
+    }
+    
+    // ==================== CATEGORIES ====================
+    function renderCategories() {
+      const tabs = document.getElementById('category-tabs');
+      const cats = ['Tümü', ...Object.keys(CATEGORIES)];
+      tabs.innerHTML = cats.map(c => 
+        `<button class="cat-tab ${c === currentCategory ? 'active' : ''}" onclick="selectCategory('${c}')">${c}</button>`
+      ).join('');
+    }
+    
+    function selectCategory(cat) {
+      currentCategory = cat;
+      renderCategories();
+      renderProducts();
+    }
+    
+    // ==================== PRODUCTS ====================
+    function renderProducts() {
+      const grid = document.getElementById('products-grid');
+      const search = document.getElementById('search-input').value.toLowerCase();
+      
+      let productCodes = Object.keys(PRODUCTS);
+      
+      // Kategori filtresi
+      if (currentCategory !== 'Tümü') {
+        productCodes = CATEGORIES[currentCategory] || [];
+      }
+      
+      // Arama filtresi
+      if (search) {
+        productCodes = productCodes.filter(code => {
+          const p = PRODUCTS[code];
+          return p.name.toLowerCase().includes(search) || code.toLowerCase().includes(search);
+        });
+      }
+      
+      // Alfabetik sırala
+      productCodes.sort((a, b) => PRODUCTS[a].name.localeCompare(PRODUCTS[b].name, 'tr'));
+      
+      grid.innerHTML = productCodes.map(code => {
+        const p = PRODUCTS[code];
+        const inCart = cart.some(item => item.code === code);
+        return `<div class="product-card ${inCart ? 'in-cart' : ''}" onclick="openQtyModal('${code}')">
+          <div class="product-emoji">${p.emoji}</div>
+          <div class="product-name">${p.name}</div>
+          <span class="product-code">${code}</span>
+          <div class="product-unit">${p.unit}</div>
+        </div>`;
+      }).join('');
+    }
+    
+    function filterProducts() {
+      renderProducts();
+    }
+    
+    // ==================== QUANTITY MODAL ====================
+    let selectedUnit = 'kg';
+    
+    function openQtyModal(code) {
+      selectedProduct = code;
+      const p = PRODUCTS[code];
+      document.getElementById('qty-product-name').textContent = p.name;
+      document.getElementById('qty-product-code').textContent = `Kod: ${code}`;
+      document.getElementById('qty-input').value = 1;
+      document.getElementById('qty-note').value = '';
+      
+      // Varsayılan birimi seç
+      selectedUnit = p.unit;
+      updateUnitButtons();
+      updatePresets();
+      
+      // Birim butonlarına event listener
+      document.querySelectorAll('.unit-btn').forEach(btn => {
+        btn.onclick = () => {
+          selectedUnit = btn.dataset.unit;
+          updateUnitButtons();
+          updatePresets();
+        };
+      });
+      
+      document.getElementById('qty-modal').classList.remove('hidden');
+      document.getElementById('qty-input').select();
+    }
+    
+    function updateUnitButtons() {
+      document.querySelectorAll('.unit-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.unit === selectedUnit);
+      });
+    }
+    
+    function updatePresets() {
+      const presets = selectedUnit === 'kg' ? [0.5, 1, 2, 3, 5, 10] : 
+                      selectedUnit === 'bağ' ? [1, 2, 3, 5, 10] :
+                      [1, 2, 3, 5, 10, 20];
+      document.getElementById('qty-presets').innerHTML = presets.map(v => 
+        `<button class="qty-preset" onclick="setQty(${v})">${v}</button>`
+      ).join('');
+    }
+    
+    function closeQtyModal() {
+      document.getElementById('qty-modal').classList.add('hidden');
+      selectedProduct = null;
+    }
+    
+    function adjustQty(delta) {
+      const input = document.getElementById('qty-input');
+      let val = parseFloat(input.value) || 0;
+      const step = selectedUnit === 'kg' ? 0.5 : 1;
+      val = Math.max(step, val + delta * step);
+      input.value = Math.round(val * 10) / 10;
+    }
+    
+    function setQty(val) {
+      document.getElementById('qty-input').value = val;
+    }
+    
+    function addToCart() {
+      const qty = parseFloat(document.getElementById('qty-input').value);
+      if (!qty || qty <= 0) return alert('Geçerli miktar girin!');
+      
+      const note = document.getElementById('qty-note').value.trim();
+      
+      // Aynı ürün + aynı birim + aynı not varsa miktarı topla
+      const existing = cart.find(item => 
+        item.code === selectedProduct && 
+        item.unit === selectedUnit && 
+        item.note === note
+      );
+      
+      if (existing) {
+        existing.qty += qty;
+      } else {
+        cart.push({ 
+          code: selectedProduct, 
+          qty, 
+          unit: selectedUnit,
+          note 
+        });
+      }
+      
+      closeQtyModal();
+      updateCartUI();
+      renderProducts();
+    }
+    
+    // ==================== CART ====================
+    function toggleCart() {
+      document.getElementById('cart-sidebar').classList.toggle('hidden');
+    }
+    
+    function updateCartUI() {
+      const count = cart.reduce((sum, item) => sum + 1, 0);
+      const total = cart.reduce((sum, item) => sum + item.qty, 0);
+      
+      document.getElementById('cart-count').textContent = count;
+      document.getElementById('cart-total').textContent = `${cart.length} ürün, ${Math.round(total * 10) / 10} birim`;
+      
+      const container = document.getElementById('cart-items');
+      if (cart.length === 0) {
+        container.innerHTML = `<div class="cart-empty"><div class="cart-empty-icon">🛒</div><p>Sepet boş</p></div>`;
+        return;
+      }
+      
+      container.innerHTML = cart.map((item, i) => {
+        const p = PRODUCTS[item.code];
+        return `<div class="cart-item">
+          <div class="cart-item-info">
+            <div class="cart-item-name">${p.name}</div>
+            <div class="cart-item-unit">${item.unit}${item.note ? ' • ' + item.note : ''}</div>
+          </div>
+          <div class="cart-item-qty">
+            <button onclick="updateCartQty(${i}, -0.5)">−</button>
+            <input type="number" value="${item.qty}" onchange="setCartQty(${i}, this.value)" step="0.5">
+            <button onclick="updateCartQty(${i}, 0.5)">+</button>
+          </div>
+          <button class="cart-item-remove" onclick="removeFromCart(${i})">🗑️</button>
+        </div>`;
+      }).join('');
+    }
+    
+    function updateCartQty(index, delta) {
+      cart[index].qty = Math.max(0.1, cart[index].qty + delta);
+      updateCartUI();
+    }
+    
+    function setCartQty(index, val) {
+      cart[index].qty = Math.max(0.1, parseFloat(val) || 0.1);
+      updateCartUI();
+    }
+    
+    function removeFromCart(index) {
+      cart.splice(index, 1);
+      updateCartUI();
+      renderProducts();
+    }
+    
+    function clearCart() {
+      if (cart.length && confirm('Sepeti temizle?')) {
+        cart = [];
+        updateCartUI();
+        renderProducts();
+      }
+    }
+    
+    function confirmOrder() {
+      if (!cart.length) return alert('Sepet boş!');
+      
+      // Sepetteki ürünleri allOrders'a ekle
+      cart.forEach(item => {
+        const p = PRODUCTS[item.code];
+        allOrders.push({
+          customer: currentCustomer,
+          code: item.code,
+          name: p.name,
+          qty: item.qty,
+          unit: item.unit,  // Kullanıcının seçtiği birim
+          note: item.note || '',
+          timestamp: Date.now()
+        });
+      });
+      
+      localStorage.setItem('zenya_all_orders', JSON.stringify(allOrders));
+      
+      alert(`✅ ${cart.length} ürün ${currentCustomer} için kaydedildi!`);
+      cart = [];
+      updateCartUI();
+      renderProducts();
+      renderCustomers();
+      toggleCart();
+    }
+    
+    // ==================== ALL ORDERS ====================
+    function showAllOrders() {
+      const container = document.getElementById('orders-summary');
+      
+      if (!allOrders.length) {
+        container.innerHTML = '<p style="text-align:center;color:var(--muted);padding:40px">Henüz sipariş yok</p>';
+        document.getElementById('orders-modal').classList.remove('hidden');
+        return;
+      }
+      
+      // Ürün+Birim kombinasyonuna göre grupla (Dereotu Kg ≠ Dereotu Bağ)
+      const grouped = {};
+      allOrders.forEach(o => {
+        const unitText = o.unit === 'kg' ? '1 Kg' : 
+                        o.unit === 'adet' ? '1 Adet' : 
+                        o.unit === 'bağ' ? '1 Bağ' :
+                        o.unit === 'paket' ? '1 Paket' :
+                        o.unit === 'kasa' ? '1 Kasa' :
+                        '1 ' + o.unit.charAt(0).toUpperCase() + o.unit.slice(1);
+        const key = `${o.name} ${unitText}`;
+        if (!grouped[key]) grouped[key] = { items: [], total: 0 };
+        grouped[key].items.push(o);
+        grouped[key].total += o.qty;
+      });
+      
+      let html = '<table class="orders-table"><thead><tr><th>Name</th><th>Miktar</th><th>Müşteri</th><th>Açıklama</th><th></th></tr></thead><tbody>';
+      
+      Object.keys(grouped).sort((a, b) => a.localeCompare(b, 'tr')).forEach(key => {
+        const group = grouped[key];
+        // Her müşteri siparişi
+        group.items.forEach((o, idx) => {
+          html += `<tr>
+            <td>${key}</td>
+            <td>${o.qty}</td>
+            <td>${o.customer}</td>
+            <td>${o.note || '-'}</td>
+            <td><button class="btn btn-danger" style="padding:4px 8px;font-size:11px" onclick="deleteOrder(${allOrders.indexOf(o)})">🗑️</button></td>
+          </tr>`;
+        });
+        // Toplam satırı
+        html += `<tr class="total-row">
+          <td><strong>Toplam ${key}</strong></td>
+          <td><strong>${Math.round(group.total * 100) / 100}</strong></td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>`;
+      });
+      
+      html += '</tbody></table>';
+      container.innerHTML = html;
+      document.getElementById('orders-modal').classList.remove('hidden');
+    }
+    
+    function deleteOrder(index) {
+      if (confirm('Bu siparişi sil?')) {
+        allOrders.splice(index, 1);
+        localStorage.setItem('zenya_all_orders', JSON.stringify(allOrders));
+        renderCustomers();
+        showAllOrders(); // Refresh
+      }
+    }
+    
+    function closeOrdersModal() {
+      document.getElementById('orders-modal').classList.add('hidden');
+    }
+    
+    function clearAllOrders() {
+      if (confirm('TÜM SİPARİŞLER SİLİNECEK! Emin misiniz?')) {
+        allOrders = [];
+        localStorage.setItem('zenya_all_orders', JSON.stringify(allOrders));
+        renderCustomers();
+        closeOrdersModal();
+        alert('Tüm siparişler silindi.');
+      }
+    }
+    
+    // ==================== EXCEL EXPORT ====================
+    function exportExcel() {
+      if (!allOrders.length) return alert('Dışa aktarılacak sipariş yok!');
+      
+      // Ürün+Birim kombinasyonuna göre grupla
+      const grouped = {};
+      allOrders.forEach(o => {
+        const unitText = o.unit === 'kg' ? '1 Kg' : 
+                        o.unit === 'adet' ? '1 Adet' : 
+                        o.unit === 'bağ' ? '1 Bağ' :
+                        o.unit === 'paket' ? '1 Paket' :
+                        o.unit === 'kasa' ? '1 Kasa' :
+                        '1 ' + o.unit.charAt(0).toUpperCase() + o.unit.slice(1);
+        const key = `${o.name} ${unitText}`;
+        if (!grouped[key]) grouped[key] = { items: [], total: 0 };
+        grouped[key].items.push(o);
+        grouped[key].total += o.qty;
+      });
+      
+      // Stil tanımları
+      const borderAll = {
+        top: { style: 'thin', color: { rgb: '000000' } },
+        bottom: { style: 'thin', color: { rgb: '000000' } },
+        left: { style: 'thin', color: { rgb: '000000' } },
+        right: { style: 'thin', color: { rgb: '000000' } }
+      };
+      
+      const headerStyle = {
+        font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 11 },
+        fill: { fgColor: { rgb: '4CAF50' } },
+        alignment: { horizontal: 'center', vertical: 'center' },
+        border: borderAll
+      };
+      
+      const normalStyle = {
+        font: { sz: 10 },
+        border: borderAll,
+        alignment: { vertical: 'center' }
+      };
+      
+      const totalStyle = {
+        font: { bold: true, sz: 11 },
+        fill: { fgColor: { rgb: 'C8E6C9' } },
+        border: borderAll,
+        alignment: { vertical: 'center' }
+      };
+      
+      // Excel verisi oluştur
+      const wsData = [];
+      const totalRowIndices = [];
+      
+      // Header
+      wsData.push([
+        { v: 'Name', s: headerStyle },
+        { v: 'Miktar', s: headerStyle },
+        { v: 'Müşteri', s: headerStyle },
+        { v: 'Açıklama', s: headerStyle }
+      ]);
+      
+      Object.keys(grouped).sort((a, b) => a.localeCompare(b, 'tr')).forEach(key => {
+        const group = grouped[key];
+        // Her müşteri siparişi
+        group.items.forEach(o => {
+          const unitText = o.unit === 'kg' ? '1 Kg' : 
+                          o.unit === 'adet' ? '1 Adet' : 
+                          o.unit === 'bağ' ? '1 Bağ' :
+                          o.unit === 'paket' ? '1 Paket' :
+                          o.unit === 'kasa' ? '1 Kasa' :
+                          '1 ' + o.unit.charAt(0).toUpperCase() + o.unit.slice(1);
+          wsData.push([
+            { v: `${o.name} ${unitText}`, s: normalStyle },
+            { v: o.qty, s: normalStyle },
+            { v: o.customer, s: normalStyle },
+            { v: o.note || '', s: normalStyle }
+          ]);
+        });
+        // Toplam satırı
+        totalRowIndices.push(wsData.length);
+        wsData.push([
+          { v: `Toplam ${key}`, s: totalStyle },
+          { v: Math.round(group.total * 100) / 100, s: totalStyle },
+          { v: '', s: totalStyle },
+          { v: '', s: totalStyle }
+        ]);
+      });
+      
+      // Worksheet oluştur
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      
+      // Sütun genişlikleri
+      ws['!cols'] = [
+        { wch: 35 }, // Name
+        { wch: 10 }, // Miktar
+        { wch: 25 }, // Müşteri
+        { wch: 25 }  // Açıklama
+      ];
+      
+      // Satır yükseklikleri
+      ws['!rows'] = wsData.map((_, i) => ({ hpt: i === 0 ? 22 : 18 }));
+      
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Siparişler');
+      
+      // İndir
+      const today = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `Zenya_Siparisler_${today}.xlsx`);
+    }
+    
+    // ==================== START ====================
+    init();
+    
+    // ==================== QUICK ORDER ====================
+    const ALIASES = {
+      // ===== DOMATES =====
+      "domates":"DOM", "domates beef":"DOMB", "beef domates":"DOMB", "beef":"DOMB",
+      "domates pembe":"DOMP", "pembe domates":"DOMP", "pembe":"DOMP",
+      "domates salkım":"DOMS", "salkım domates":"DOMS", "salkim domates":"DOMS", "salkım":"DOMS", "salkim":"DOMS",
+      "domates salkım lüks":"DOMSL", "salkım lüks":"DOMSL",
+      "domates köy":"DOMK", "köy domates":"DOMK", "köy dometes":"DOMK", "koy domates":"DOMK",
+      "domates lüks":"DOML", "lüks domates":"DOML",
+      "domates cherry":"ÇER", "cherry domates":"ÇER", "cherry":"ÇER", "çeri":"ÇER", "ceri":"ÇER",
+      "domates kokteyl":"KOK", "kokteyl domates":"KOK", "kokteyl":"KOK",
+      "domates kokteyl sarı":"KOKS", "sarı kokteyl":"KOKS", "sarı cherry":"KOKS",
+      "domates kokteyl siyah":"KOKSS", "siyah kokteyl":"KOKSS", "siyah cherry":"KOKSS",
+      "domates kokteyl turuncu":"KOKT", "turuncu kokteyl":"KOKT",
+      "domates kokteyl kaplan":"KOKK", "kaplan":"KOKK", "kaplan domates":"KOKK",
+      "şeker kokteyl":"ŞEK", "seker kokteyl":"ŞEK", "şeker domates":"ŞEK", "seker domates":"ŞEK",
+      "domates yer":"YER", "yer domates":"YER",
+      "domates organik":"PEM", "organik domates":"PEM",
+      "domates calabash":"DOMKC", "calabash":"DOMKC",
+      
+      // ===== BİBER =====
+      "biber köy":"YAĞ", "köy biber":"YAĞ", "köy biberi":"YAĞ", "koy biber":"YAĞ", "koy biberi":"YAĞ", "biber koy":"YAĞ",
+      "biber kırmızı":"KIR", "kırmızı biber":"KIR", "kirmizi biber":"KIR", "kapya":"KIR", "kapya biber":"KIR", "biber kapya":"KIR",
+      "biber çarliston":"ÇAR", "çarliston":"ÇAR", "çarliston biber":"ÇAR", "carliston":"ÇAR", "carliston biber":"ÇAR",
+      "biber dolma":"DOL", "dolma biber":"DOL", "dolmalık biber":"DOL", "dolmalık":"DOL", "dolmalik":"DOL",
+      "biber kıl":"KIL", "kıl biber":"KIL", "kil biber":"KIL",
+      "biber sivri":"SİV", "sivri biber":"SİV", "sivri":"SİV",
+      "biber kaliforniya":"CA", "kaliforniya":"CA", "california":"CA", "kaliforniya biber":"CA",
+      "kaliforniya kırmızı":"CAK", "kırmızı kaliforniya":"CAK", "kirmizi california":"CAK",
+      "kaliforniya sarı":"CAS", "sarı kaliforniya":"CAS", "sari california":"CAS",
+      "biber jalapeno":"BİBJ", "jalapeno":"BİBJ", "jalepeno":"BİBJ", "jalapeno biber":"JAL",
+      "biber meksika":"MEK", "meksika biber":"MEK", "meksika":"MEK",
+      "şili biber":"Şİ", "sili biber":"Şİ", "acı biber":"Şİ", "aci biber":"Şİ",
+      "cin biber":"CİN", "biber cin":"CİN",
+      "macar biber":"MAC", "biber macar":"MCR",
+      "samandağ biberi":"SAM", "samandag biberi":"SAM",
+      "biber kappi":"KIRO", "kappi":"KIRO",
+      
+      // ===== YEŞİLLİK =====
+      "maydanoz":"MAY", "maydonoz":"MAY",
+      "maydanoz frenk":"MAYF", "frenk maydanoz":"MAYF", "frenk maydanozu":"MAYF",
+      "dereotu":"DER", "dere otu":"DER",
+      "dereotu organik":"DERO", "organik dereotu":"DERO",
+      "nane":"NA", "taze nane":"NA",
+      "roka":"ROK", "roka baby":"ROKB", "baby roka":"ROKB",
+      "roka ayıklanmış":"ROK250", "ayıklanmış roka":"ROK250",
+      "ıspanak":"ISP", "ispanak":"ISP",
+      "ıspanak baby":"ISPB", "ispanak baby":"ISPB", "baby ıspanak":"ISPB",
+      "fesleğen":"FES", "feslegen":"FES", "reyhan":"R",
+      "fesleğen taze":"FEST", "taze fesleğen":"FEST",
+      "kişniş":"KİŞ", "kisnis":"KİŞ", "kişniş taze":"KİŞT", "taze kişniş":"KİŞT",
+      "kekik":"KEK", "kekik taze":"KEKT", "taze kekik":"KEKT",
+      "tarhun":"TAR", "tarhun otu":"TAR",
+      "tere":"TER", "tere ayıklanmış":"TERA",
+      "biberiye":"Bİ", "biberiye taze":"BİBT",
+      "semizotu":"SEM", "semiz otu":"SEM",
+      "kuzu kulağı":"KUZ", "kuzukulağı":"KUZ", "kuzu kulagi":"KUZ", "kuzukulagi":"KUZ",
+      "kuzu kulağı kırmızı":"KUZK", "kırmızı kuzu kulağı":"KUZK",
+      "reyhan taze":"RT", "taze reyhan":"RT",
+      "pazı":"PZ", "pazi":"PZ", "pazı bağ":"PZB",
+      "ısırgan":"IS", "isirgan":"IS",
+      "ebegümeci":"EB", "ebegomeci":"EBE",
+      "akdeniz yeşilliği":"AK", "akdeniz yesilligi":"AK",
+      "mikrofiliz":"MİKR", "mikro filiz":"MİKR",
+      "lemon grass":"LG", "lemongrass":"LG",
+      
+      // ===== MARUL =====
+      "marul":"MAR", "marul organik":"MARO",
+      "marul yedikule":"MARY", "yedikule":"MARY", "yedikule marul":"MARY",
+      "marul yağlı":"MARYAĞ", "yağlı marul":"MARYAĞ",
+      "marul çin":"MARÇ", "çin marulu":"MARÇ",
+      "göbek":"GS", "göbek marul":"GS", "gobek":"GS", "gobek marul":"GS",
+      "kıvırcık":"KIV", "kivircik":"KIV", "kıvırcık marul":"KIV",
+      "lolo rosso":"LO", "lolo":"LO", "lollo rosso":"LO",
+      "maskolin":"MAS",
+      "endivyen":"END",
+      "aysberg":"AYS", "iceberg":"AYS", "buzlu marul":"AYS",
+      "pollorosso":"PO", "pollo rosso":"PO",
+      "marul gül kırmızı":"KGÜL", "kırmızı gül marul":"KGÜL",
+      "marul gül yeşil":"YGÜL", "yeşil gül marul":"YGÜL",
+      "kale":"KALE150", "kale yaprağı":"KALE150",
+      
+      // ===== MEYVE =====
+      "elma":"EL", "elma amasya":"ELA", "amasya elma":"ELA",
+      "elma fuji":"ELF", "fuji":"ELF", "fuji elma":"ELF",
+      "elma golden":"ELG", "golden":"ELG", "golden elma":"ELG",
+      "elma gala":"ELGALA", "gala":"ELGALA", "gala elma":"ELGALA",
+      "elma granny":"ELGR", "granny smith":"ELGR", "yeşil elma":"ELGR", "yesil elma":"ELGR",
+      "elma pink lady":"ELP", "pink lady":"ELP",
+      "elma starking":"ELS", "starking":"ELS", "kırmızı elma":"ELS",
+      "armut":"ARM", "armut deveci":"ARMD", "deveci":"ARMD", "deveci armut":"ARMD",
+      "armut santamari":"ARMS", "santa maria":"ARMS", "santamaria":"ARMS",
+      "armut ankara":"ARMA", "ankara armudu":"ARMA",
+      "ayva":"AY", "ayva taze":"AYT",
+      "muz":"MUZİ", "muz ithal":"MUZİ", "muz yerli":"MUZY", "yerli muz":"MUZY",
+      "portakal":"POR", "portakal sıkmalık":"PORS", "sıkmalık portakal":"PORS", "sikmalik portakal":"PORS",
+      "portakal kan":"PORK", "kan portakal":"PORK",
+      "limon":"LİM", "limon sıkmalık":"LİMS", "sıkmalık limon":"LİMS",
+      "lime":"Lİ", "misket limonu":"Lİ",
+      "mandalina":"MAN", "mandalina murcott":"MANM", "murcott":"MANM",
+      "mandalina satsuma":"MANS", "satsuma":"MANS",
+      "greyfurt":"GR",
+      "nar":"NAR", "nar sıkmalık":"NARS", "sıkmalık nar":"NARS",
+      "kivi":"Kİ",
+      "mango":"MNG", "mango gurme":"MNGG",
+      "avokado":"AV", "avakado":"AVA",
+      "ananas":"ANS",
+      "çilek":"ÇİL", "cilek":"ÇİL", "çilek küçük":"ÇİLK",
+      "altın çilek":"AÇ", "altin cilek":"AÇ",
+      "şeftali":"ŞEF", "seftali":"ŞEF",
+      "nektarin":"NEK", "nektarin beyaz":"NEKB",
+      "üzüm":"ÜZ", "uzum":"ÜZ", "üzüm siyah":"ÜZS", "siyah üzüm":"ÜZS",
+      "üzüm mor":"ÜZM", "mor üzüm":"ÜZM",
+      "üzüm redglob":"ÜZR", "redglob":"ÜZR",
+      "üzüm frenk":"ÜZF", "frenk üzümü":"ÜZF",
+      "yaban mersini":"YM", "blueberry":"YM", "yabanmersini":"YM",
+      "ahududu":"AHU", "frambuaz":"FR",
+      "böğürtlen":"BÖĞ", "bogurtlen":"BÖĞ",
+      "pomelo":"POM",
+      "kamkat":"KAM", "kumkat":"KAM",
+      "karpuz":"KAR", "ala karpuz":"AKAR",
+      "kavun":"KAV", "kavun kırkağaç":"KAVK", "kırkağaç":"KAVK",
+      "kiraz":"KİR", "vişne":"VİŞ", "visne":"VİŞ",
+      "erik":"ERK", "erik mürdüm":"ERKM", "mürdüm erik":"ERKM",
+      "incir":"İNC", "kayısı":"KAY", "kayisi":"KAY",
+      "dut":"DUT", "muşmula":"MUŞ", "musmula":"MUŞ",
+      "hurma":"HU", "hünnap":"HÜN",
+      "kızılcık":"KIZ", "kizilcik":"KIZ", "alıç":"ALIÇ", "alic":"ALIÇ",
+      "passionfruit":"PAS", "passion fruit":"ÇF",
+      "pitahaya":"Pİ", "ejder meyvesi":"Pİ",
+      "papaya":"PAP",
+      "hindistan cevizi":"HİN", "hindistancevizi":"HİN",
+      "ceviz":"CEV", "kestane":"KES",
+      "fındık":"FIN", "yeşil fındık":"YF", "yesil findik":"YF",
+      "çağla":"ÇA", "cagla":"ÇA",
+      
+      // ===== SEBZE =====
+      "salatalık":"SAL", "salatalik":"SAL", "hıyar":"SAL", "hiyar":"SAL",
+      "salatalık silor":"Sİ", "silor":"Sİ",
+      "havuç":"HV", "havuc":"HV",
+      "havuç baby":"HVB", "baby havuç":"HVB",
+      "havuç iri":"HVİ", "iri havuç":"HVİ",
+      "havuç siyah":"HVS", "siyah havuç":"HVS",
+      "patates":"P", "patates baby":"PB", "baby patates":"PB",
+      "patates kızartmalık":"KP", "kızartmalık patates":"KP",
+      "patates kumpirlık":"PK", "kumpirlık patates":"PK", "kumpir patates":"PK",
+      "tatlı patates":"TP", "tatli patates":"TP",
+      "kabak":"KB", "kabak baby":"KBB", "baby kabak":"KBB",
+      "kabak kara":"KBK", "kara kabak":"KBK",
+      "kabak mini":"KBM", "mini kabak":"KBM",
+      "bal kabağı":"BAL", "balkabağı":"BAL",
+      "patlıcan":"PAT", "patlican":"PAT",
+      "patlıcan bostan":"PAB", "bostan patlıcan":"PAB",
+      "patlıcan kebaplık":"PATKEB", "kebaplık patlıcan":"PATKEB",
+      "pırasa":"PIR", "pirasa":"PIR",
+      "brokoli":"BÜ", "brokolini":"BRK",
+      "karnabahar":"KA", "karnibahar":"KA",
+      "lahana":"LAH", "beyaz lahana":"LAH", "lahana beyaz":"LAH",
+      "lahana kırmızı":"KR", "kırmızı lahana":"KR", "mor lahana":"KR",
+      "lahana kara":"KL", "kara lahana":"KL",
+      "brüksel lahanası":"BRÜ", "bruksel":"BRÜ",
+      "kereviz":"KER", "kereviz sap":"KERS", "sap kereviz":"KERS",
+      "soğan":"SO", "sogan":"SO", "kuru soğan":"SO", "soğan kuru":"SO",
+      "soğan kırmızı":"SOK", "kırmızı soğan":"SOK", "mor soğan":"SOM",
+      "soğan taze":"TS", "taze soğan":"TS", "yeşil soğan":"TS",
+      "soğan frenk":"TSF", "frenk soğanı":"TSF",
+      "soğan arpacık":"ARP", "arpacık soğan":"ARP", "arpacık":"ARP",
+      "sarımsak":"SAR", "sarimsak":"SAR",
+      "sarımsak taze":"SART", "taze sarımsak":"SART",
+      "sarımsak soyulmuş":"SARS", "soyulmuş sarımsak":"SARS",
+      "pancar":"PAN", "pancar yapraklı":"PANY",
+      "alabaş":"ALA", "pancar alabaş":"ALA",
+      "şalgam":"ŞAL", "salgam":"ŞAL",
+      "enginar":"ENG",
+      "bakla":"BAK", "bakla iç":"BAKİ", "iç bakla":"BAKİ", "ic bakla":"BAKİ",
+      "bezelye":"BEZ", "bezelye sultani":"BEZS", "sultani":"BEZS", "sultani bezelye":"BEZS",
+      "bezelye filizi":"BEZF",
+      "fasulye":"FAS", "taze fasulye":"FAS",
+      "fasulye ayşe kadın":"FASA", "ayşe kadın":"FASA",
+      "fasulye fransız":"FASF", "fransız fasulye":"FASF",
+      "fasulye şeker":"FASŞ", "şeker fasulye":"FASŞ",
+      "fasulye çalı":"ÇAL", "çalı fasulye":"ÇAL",
+      "fasulye boncuk":"BON", "boncuk fasulye":"BON",
+      "barbunya":"BAR",
+      "börülce":"BÖ", "borulce":"BÖ",
+      "bamya":"BAM",
+      "araka":"ARK",
+      "zencefil":"ZEN",
+      "soya filizi":"SOY", "soya":"SOY",
+      "mantar":"MN", "mantar istiridye":"MNİS", "istiridye mantar":"MNİS",
+      "mantar kestane":"MNKE", "kestane mantar":"MNKE",
+      "mantar porçini":"MNP", "porçini":"MNP",
+      "turp":"TRP", "turp kırmızı":"TRPK", "kırmızı turp":"TRPK",
+      "turp siyah":"TRPS", "siyah turp":"TRPS",
+      "turp beyaz":"TRPB", "beyaz turp":"TRPB",
+      "turp fındık":"TRPF", "fındık turp":"TRPF",
+      "turp çin":"TRPÇ", "çin turpu":"TRPÇ",
+      "acur":"AC", "azman":"AZ",
+      "rezene":"REZ",
+      "mısır":"MIS", "mısır taze":"MIS", "taze mısır":"MIS",
+      "kuşkonmaz":"KUŞ", "kuskonmaz":"KUŞ",
+      "yer elması":"YEL", "yerelması":"YEL",
+      "kudret narı":"KUD",
+      "yaprak":"YAP", "asma yaprağı":"YAP", "yaprak salamura":"YAPÇ"
+    };
+    
+    function showQuickOrder() {
+      document.getElementById('quick-order-modal').classList.remove('hidden');
+      document.getElementById('quick-order-text').value = '';
+      document.getElementById('quick-order-result').classList.add('hidden');
+      document.getElementById('quick-add-btn').disabled = true;
+      document.getElementById('quick-order-text').focus();
+    }
+    
+    function closeQuickOrder() {
+      document.getElementById('quick-order-modal').classList.add('hidden');
+    }
+    
+    function findProductCode(name) {
+      if (!name) return null;
+      const n = name.toLowerCase().replace(/\s+/g, ' ').trim();
+      
+      // Tam eşleşme önce
+      if (ALIASES[n]) return ALIASES[n];
+      
+      // Uzun alias'lardan kısaya doğru kontrol (daha spesifik olanı önce bul)
+      const sorted = Object.entries(ALIASES).sort((a, b) => b[0].length - a[0].length);
+      for (const [alias, code] of sorted) {
+        if (n === alias) return code;
+      }
+      for (const [alias, code] of sorted) {
+        if (n.includes(alias)) return code;
+      }
+      
+      // PRODUCTS içinde ara
+      for (const [code, p] of Object.entries(PRODUCTS)) {
+        const pn = p.name.toLowerCase();
+        if (pn === n) return code;
+      }
+      for (const [code, p] of Object.entries(PRODUCTS)) {
+        const pn = p.name.toLowerCase();
+        if (n.includes(pn) || pn.includes(n)) return code;
+      }
+      
+      return null;
+    }
+    
+    function parseQuickOrder() {
+      const text = document.getElementById('quick-order-text').value.trim();
+      if (!text) return alert('Sipariş listesi girin!');
+      
+      const lines = text.split('\n').filter(l => l.trim());
+      const parsed = [];
+      
+      lines.forEach(line => {
+        // Temizlik: ":" karakterini ve ekstra boşlukları temizle
+        let cleanLine = line
+          .replace(/^[-•*]\s*/, '')
+          .replace(/:/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        
+        if (!cleanLine || cleanLine.length < 2) return;
+        
+        let qty = 1, unit = 'kg', productName = '', note = '';
+        
+        // Birim listesi (çuval eklendi)
+        const unitRegex = /(\d+(?:[.,]\d+)?)\s*(kg|kilo|kilogram|bağ|bag|adet|paket|kasa|çuval|cuval|tane|pcs)/gi;
+        const unitMatch = cleanLine.match(unitRegex);
+        
+        if (unitMatch && unitMatch.length > 0) {
+          // İlk eşleşmeyi al
+          const match = unitMatch[0].match(/(\d+(?:[.,]\d+)?)\s*(kg|kilo|kilogram|bağ|bag|adet|paket|kasa|çuval|cuval|tane|pcs)/i);
+          if (match) {
+            qty = parseFloat(match[1].replace(',', '.'));
+            unit = match[2].toLowerCase()
+              .replace('kilo', 'kg')
+              .replace('kilogram', 'kg')
+              .replace('bag', 'bağ')
+              .replace('cuval', 'çuval')
+              .replace('tane', 'adet')
+              .replace('pcs', 'adet');
+            
+            // Birim+miktar kısmını çıkar
+            cleanLine = cleanLine.replace(unitMatch[0], ' ').replace(/\s+/g, ' ').trim();
+          }
+        }
+        
+        // Açıklama ayıkla (parantez içi)
+        const parenMatch = cleanLine.match(/\(([^)]+)\)/);
+        if (parenMatch) {
+          note = parenMatch[1].trim();
+          cleanLine = cleanLine.replace(parenMatch[0], '').trim();
+        }
+        
+        // Kalan ürün adı
+        productName = cleanLine.trim();
+        
+        // Ürün adı boşsa atla
+        if (!productName) return;
+        
+        const code = findProductCode(productName);
+        parsed.push({
+          code: code || '???',
+          name: code ? PRODUCTS[code].name : productName,
+          qty: qty,
+          unit: unit,
+          note: note
+        });
+      });
+      
+      if (parsed.length === 0) {
+        alert('Hiçbir ürün parse edilemedi!');
+        return;
+      }
+      
+      renderQuickTable(parsed);
+    }
+    
+    function renderQuickTable(items) {
+      const tbody = document.getElementById('quick-table-body');
+      tbody.innerHTML = items.map((item, i) => `
+        <tr data-index="${i}" data-code="${item.code}">
+          <td class="product-cell">
+            <div class="product-selector">
+              <div class="product-display" onclick="openProductPicker(this)">
+                <span class="product-name">${item.name}</span>
+                <span class="code-badge ${item.code === '???' ? 'unknown' : ''}">${item.code}</span>
+                <span class="edit-icon">✏️</span>
+              </div>
+            </div>
+          </td>
+          <td><input type="number" class="quick-qty" value="${item.qty}" step="0.5" min="0.1" style="width:70px"></td>
+          <td>
+            <select class="quick-unit" style="width:80px">
+              <option value="kg" ${item.unit === 'kg' ? 'selected' : ''}>Kg</option>
+              <option value="bağ" ${item.unit === 'bağ' ? 'selected' : ''}>Bağ</option>
+              <option value="adet" ${item.unit === 'adet' ? 'selected' : ''}>Adet</option>
+              <option value="paket" ${item.unit === 'paket' ? 'selected' : ''}>Paket</option>
+              <option value="kasa" ${item.unit === 'kasa' ? 'selected' : ''}>Kasa</option>
+              <option value="çuval" ${item.unit === 'çuval' ? 'selected' : ''}>Çuval</option>
+            </select>
+          </td>
+          <td><input type="text" class="quick-note" value="${item.note}" placeholder="Açıklama..."></td>
+          <td><button class="btn btn-danger" style="padding:4px 8px" onclick="this.closest('tr').remove();updateQuickCount()">🗑️</button></td>
+        </tr>
+      `).join('');
+      
+      document.getElementById('quick-order-result').classList.remove('hidden');
+      document.getElementById('quick-add-btn').disabled = false;
+      updateQuickCount();
+    }
+    
+    // Ürün seçici modal
+    let currentPickerRow = null;
+    
+    function openProductPicker(el) {
+      currentPickerRow = el.closest('tr');
+      const modal = document.getElementById('product-picker-modal');
+      const search = document.getElementById('picker-search');
+      
+      modal.classList.remove('hidden');
+      search.value = '';
+      search.focus();
+      renderPickerProducts('');
+    }
+    
+    function closeProductPicker() {
+      document.getElementById('product-picker-modal').classList.add('hidden');
+      currentPickerRow = null;
+    }
+    
+    function renderPickerProducts(filter) {
+      const container = document.getElementById('picker-products');
+      const f = filter.toLowerCase().trim();
+      
+      // Kategorilere göre grupla
+      let html = '';
+      
+      Object.entries(CATEGORIES).forEach(([catName, codes]) => {
+        const filtered = codes.filter(code => {
+          const p = PRODUCTS[code];
+          if (!p) return false;
+          if (!f) return true;
+          return p.name.toLowerCase().includes(f) || code.toLowerCase().includes(f);
+        });
+        
+        if (filtered.length === 0) return;
+        
+        html += `<div class="picker-category">
+          <div class="picker-cat-title">${catName}</div>
+          <div class="picker-items">
+            ${filtered.map(code => {
+              const p = PRODUCTS[code];
+              return `<div class="picker-item" onclick="selectProduct('${code}')">
+                <span class="picker-emoji">${p.emoji}</span>
+                <span class="picker-name">${p.name}</span>
+                <span class="picker-code">${code}</span>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>`;
+      });
+      
+      if (!html) {
+        html = '<div style="text-align:center;color:var(--muted);padding:40px">Ürün bulunamadı</div>';
+      }
+      
+      container.innerHTML = html;
+    }
+    
+    function selectProduct(code) {
+      if (!currentPickerRow) return;
+      
+      const p = PRODUCTS[code];
+      currentPickerRow.dataset.code = code;
+      currentPickerRow.querySelector('.product-name').textContent = p.name;
+      const badge = currentPickerRow.querySelector('.code-badge');
+      badge.textContent = code;
+      badge.classList.remove('unknown');
+      
+      closeProductPicker();
+    }
+    
+    function updateQuickCount() {
+      const count = document.querySelectorAll('#quick-table-body tr').length;
+      document.getElementById('quick-result-count').textContent = `✅ ${count} ürün bulundu`;
+      document.getElementById('quick-add-btn').disabled = count === 0;
+    }
+    
+    function addQuickRow() {
+      const tbody = document.getElementById('quick-table-body');
+      const newRow = document.createElement('tr');
+      newRow.dataset.code = '???';
+      newRow.innerHTML = `
+        <td class="product-cell">
+          <div class="product-selector">
+            <div class="product-display" onclick="openProductPicker(this)">
+              <span class="product-name">Ürün seç...</span>
+              <span class="code-badge unknown">???</span>
+              <span class="edit-icon">✏️</span>
+            </div>
+          </div>
+        </td>
+        <td><input type="number" class="quick-qty" value="1" step="0.5" min="0.1" style="width:70px"></td>
+        <td>
+          <select class="quick-unit" style="width:80px">
+            <option value="kg" selected>Kg</option>
+            <option value="bağ">Bağ</option>
+            <option value="adet">Adet</option>
+            <option value="paket">Paket</option>
+            <option value="kasa">Kasa</option>
+            <option value="çuval">Çuval</option>
+          </select>
+        </td>
+        <td><input type="text" class="quick-note" value="" placeholder="Açıklama..."></td>
+        <td><button class="btn btn-danger" style="padding:4px 8px" onclick="this.closest('tr').remove();updateQuickCount()">🗑️</button></td>
+      `;
+      tbody.appendChild(newRow);
+      // Yeni satır eklenince direkt ürün seçiciyi aç
+      openProductPicker(newRow.querySelector('.product-display'));
+      updateQuickCount();
+    }
+    
+    function addQuickToCart() {
+      const rows = document.querySelectorAll('#quick-table-body tr');
+      let addedCount = 0;
+      let skippedCount = 0;
+      
+      rows.forEach(row => {
+        const code = row.dataset.code;
+        const qty = parseFloat(row.querySelector('.quick-qty').value) || 0;
+        const unit = row.querySelector('.quick-unit').value;
+        const note = row.querySelector('.quick-note').value.trim();
+        
+        // Geçersiz kod veya miktar varsa atla
+        if (!code || code === '???' || qty <= 0) {
+          if (code === '???') skippedCount++;
+          return;
+        }
+        
+        // Aynı ürün + birim + not varsa topla
+        const existing = cart.find(item => 
+          item.code === code && 
+          item.unit === unit && 
+          item.note === note
+        );
+        
+        if (existing) {
+          existing.qty += qty;
+        } else {
+          cart.push({
+            code,
+            qty,
+            unit,
+            note
+          });
+        }
+        addedCount++;
+      });
+      
+      if (addedCount > 0) {
+        updateCartUI();
+        renderProducts();
+        closeQuickOrder();
+        toggleCart();
+        let msg = `✅ ${addedCount} ürün sepete eklendi!`;
+        if (skippedCount > 0) msg += `\n⚠️ ${skippedCount} ürün seçilmediği için atlandı.`;
+        alert(msg);
+      } else {
+        alert('Eklenecek geçerli ürün yok!\nÜrünlerin seçili olduğundan emin olun.');
+      }
+    }
+    
+    // ==================== PDF UPLOAD ====================
+    
+    // PDF.js worker ayarı
+    if (typeof pdfjsLib !== 'undefined') {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+    
+    // Huqqa ürün eşleştirmeleri - PDF'deki isimler
+    const HUQQA_ALIASES = {
+      // A
+      "adacayi taze": "ADA",
+      "ananas kg": "ANS",
+      "ananas": "ANS",
+      "avokado": "AV",
+      // B
+      "biber carliston": "ÇAR",
+      "biber dolma sari california": "CAS",
+      "biber dolma yesil": "DOL",
+      "biber kapya": "KIR",
+      "biber kil": "KIL",
+      "biber koy": "YAĞ",
+      "biber meksika": "MEK",
+      "brokoli": "BÜ",
+      // C-Ç
+      "cilek": "ÇİL",
+      // D
+      "dereotu": "DER",
+      "domates": "DOM",
+      "domates beef": "DOMB",
+      "domates kokteyl": "KOK",
+      "domates salkim": "DOMS",
+      "domates ceri sari": "KOKS",
+      "domates ceri zebra": "KOKK",
+      "dragon meyvesi": "Pİ",
+      // F
+      "feslegen taze": "FEST",
+      "frenk sogan": "TSF",
+      "frenk sogani": "TSF",
+      "frenk uzum taze": "ÜZF",
+      // G
+      "gobek": "GS",
+      // H
+      "havuc": "HV",
+      // K
+      "kabak": "KB",
+      "kekik taze": "KEKT",
+      "kereviz sap": "KERS",
+      "kisnis taze": "KİŞT",
+      "kivi": "Kİ",
+      "kivircik": "KIV",
+      // L
+      "lahana beyaz": "LAH",
+      "lahana kirmizi": "KR",
+      "lime": "Lİ",
+      "limon": "LİM",
+      // M
+      "mango": "MNG",
+      "marul": "MAR",
+      "maskolin": "MAS",
+      "maydanoz": "MAY",
+      "muz": "MUZİ",
+      // N
+      "nane taze": "NA",
+      "nar": "NAR",
+      // P
+      "pancar": "PAN",
+      "passion fruit taze adet": "PAS",
+      "passion fruit": "PAS",
+      "patates": "P",
+      "patates baby": "PB",
+      "patates kizartma": "KP",
+      "patates kizartmali kagria": "KP",
+      "patlican kemer": "PAT",
+      "patlican": "PAT",
+      // R
+      "reyhan": "R",
+      "roka": "ROK",
+      "rozmarin": "BİBT",
+      // S-Ş
+      "salatalik": "SAL",
+      "sarimsak soyulmus": "SARS",
+      "sogan arpacik soyulmus": "ARPS",
+      "sogan kirmizi": "SOK",
+      "sogan kuru": "SO",
+      "sogan taze": "TS",
+      "soya filizi": "SOY",
+      // U-Ü
+      "uzum siyah": "ÜZS",
+      "red glob": "ÜZS",
+      // Y
+      "yaban mersini taze": "YM",
+      "yaban mersini": "YM"
+    };
+    
+    let pdfParsedItems = [];
+    
+    function showPdfUpload() {
+      document.getElementById('pdf-upload-modal').classList.remove('hidden');
+      resetPdfUpload();
+      setupDragDrop();
+    }
+    
+    function closePdfUpload() {
+      document.getElementById('pdf-upload-modal').classList.add('hidden');
+    }
+    
+    function resetPdfUpload() {
+      document.getElementById('pdf-upload-area').style.display = 'block';
+      document.getElementById('pdf-loading').style.display = 'none';
+      document.getElementById('pdf-results').style.display = 'none';
+      document.getElementById('pdf-add-btn').disabled = true;
+      pdfParsedItems = [];
+    }
+    
+    function setupDragDrop() {
+      const area = document.getElementById('pdf-upload-area');
+      
+      area.ondragover = (e) => {
+        e.preventDefault();
+        area.classList.add('dragover');
+      };
+      
+      area.ondragleave = () => {
+        area.classList.remove('dragover');
+      };
+      
+      area.ondrop = (e) => {
+        e.preventDefault();
+        area.classList.remove('dragover');
+        const file = e.dataTransfer.files[0];
+        if (file && file.type === 'application/pdf') {
+          processPdf(file);
+        } else {
+          alert('Lütfen PDF dosyası yükleyin!');
+        }
+      };
+    }
+    
+    function handlePdfSelect(event) {
+      const file = event.target.files[0];
+      if (file) {
+        processPdf(file);
+      }
+    }
+    
+    async function processPdf(file) {
+      document.getElementById('pdf-upload-area').style.display = 'none';
+      document.getElementById('pdf-loading').style.display = 'block';
+      
+      try {
+        // PDF'i base64'e çevir
+        const base64 = await fileToBase64(file);
+        
+        // Claude API'ye gönder
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': getApiKey(),
+            'anthropic-version': '2023-06-01',
+            'anthropic-dangerous-direct-browser-access': 'true'
+          },
+          body: JSON.stringify({
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 4096,
+            messages: [{
+              role: 'user',
+              content: [
+                {
+                  type: 'document',
+                  source: {
+                    type: 'base64',
+                    media_type: 'application/pdf',
+                    data: base64
+                  }
+                },
+                {
+                  type: 'text',
+                  text: `Bu PDF bir tedarikçi sipariş listesi. Listedeki TÜM ürünleri JSON formatında çıkar.
+
+Her ürün için:
+- qty: miktar (sayı, örn: 10.5)
+- unit: birim ("kg" veya "adet")
+- name: ürün adı (BÜYÜK HARF, Türkçe, örn: "DOMATES SALKIM")
+
+SADECE JSON array döndür, başka bir şey yazma. Örnek format:
+[{"qty":10,"unit":"kg","name":"DOMATES"},{"qty":5,"unit":"adet","name":"ANANAS"}]
+
+ÖNEMLİ: Tüm ürünleri ekle, hiçbirini atlama. Fiyat, KDV gibi bilgileri dahil etme.`
+                }
+              ]
+            }]
+          })
+        });
+        
+        if (!response.ok) {
+          const error = await response.json();
+          if (response.status === 401) {
+            clearApiKey();
+            throw new Error('API anahtarı geçersiz. Lütfen tekrar girin.');
+          }
+          throw new Error(error.error?.message || 'API hatası');
+        }
+        
+        const data = await response.json();
+        const content = data.content[0].text;
+        
+        console.log('Claude yanıtı:', content);
+        
+        // JSON parse et
+        let products;
+        try {
+          // JSON'u bul (bazen ``` içinde olabiliyor)
+          const jsonMatch = content.match(/\[[\s\S]*\]/);
+          if (jsonMatch) {
+            products = JSON.parse(jsonMatch[0]);
+          } else {
+            throw new Error('JSON bulunamadı');
+          }
+        } catch (e) {
+          console.error('JSON parse hatası:', e);
+          throw new Error('PDF okunamadı. Lütfen tekrar deneyin.');
+        }
+        
+        console.log('Parse edilen ürünler:', products);
+        
+        // Ürünleri eşleştir
+        const items = products.map(p => {
+          const code = matchHuqqaProduct(p.name);
+          return {
+            code: code,
+            name: code !== '???' && PRODUCTS[code] ? PRODUCTS[code].name : p.name,
+            originalName: p.name,
+            qty: parseFloat(p.qty) || 0,
+            unit: p.unit || 'kg',
+            note: ''
+          };
+        }).filter(item => item.qty > 0);
+        
+        // PDF bilgisi göster
+        document.getElementById('pdf-info').innerHTML = `
+          <span class="pdf-info-icon">📄</span>
+          <div class="pdf-info-text">
+            <div class="pdf-info-name">${file.name}</div>
+            <div class="pdf-info-details">Claude API ile okundu • ${items.length} ürün</div>
+          </div>
+        `;
+        
+        pdfParsedItems = items;
+        
+        // Sonuçları göster
+        document.getElementById('pdf-loading').style.display = 'none';
+        document.getElementById('pdf-results').style.display = 'block';
+        document.getElementById('pdf-result-count').textContent = `✅ ${items.length} ürün bulundu`;
+        document.getElementById('pdf-add-btn').disabled = items.length === 0;
+        
+        renderPdfTable(items);
+        
+      } catch (error) {
+        console.error('PDF okuma hatası:', error);
+        document.getElementById('pdf-loading').style.display = 'none';
+        document.getElementById('pdf-upload-area').style.display = 'block';
+        alert('Hata: ' + error.message);
+      }
+    }
+    
+    // Dosyayı base64'e çevir
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const base64 = reader.result.split(',')[1];
+          resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+    
+    // API Key yönetimi
+    function getApiKey() {
+      let key = localStorage.getItem('zenya_claude_api_key');
+      if (!key) {
+        key = prompt('Claude API anahtarınızı girin:\n\n(Anthropic Console\'dan alabilirsiniz: console.anthropic.com)');
+        if (key && key.startsWith('sk-ant-')) {
+          localStorage.setItem('zenya_claude_api_key', key);
+        } else if (key) {
+          alert('Geçersiz API anahtarı. "sk-ant-" ile başlamalı.');
+          return getApiKey();
+        }
+      }
+      return key;
+    }
+    
+    function clearApiKey() {
+      localStorage.removeItem('zenya_claude_api_key');
+    }
+    
+    function detectPdfFormat(text) {
+      const info = {
+        supplier: 'Bilinmeyen Tedarikçi',
+        location: null,
+        date: null
+      };
+      
+      // Huqqa tespiti
+      if (text.includes('HUQQA') || text.includes('Huqqa')) {
+        info.supplier = 'Huqqa';
+        
+        // Lokasyon
+        if (text.includes('TRQ KRC KITCHEN') || text.includes('KRC')) {
+          info.location = 'KRC Kitchen (Kuruçeşme)';
+        } else if (text.includes('TRQ EMG KITCHEN') || text.includes('EMG') || text.includes('EMİRGAN')) {
+          info.location = 'Emirgan Kitchen';
+        } else if (text.includes('TRQ SQR KITCHEN') || text.includes('SQR') || text.includes('EMAAR')) {
+          info.location = 'Emaar Square Kitchen';
+        }
+        
+        // Tarih
+        const dateMatch = text.match(/(\d{1,2}[\.\/]\d{1,2}[\.\/]\d{4})/);
+        if (dateMatch) {
+          info.date = dateMatch[1];
+        }
+      }
+      
+      return info;
+    }
+    
+    function parseHuqqaPdf(text) {
+      const items = [];
+      
+      console.log('Parse başlıyor, metin uzunluğu:', text.length);
+      
+      // PDF.js tüm metni tek satır yapıyor
+      // Örnek: "0,05 Kilogram 1250001 ADACAYI TAZE 3.000,00 0 150,00 100 10,00 Kilogram 1170002 ANANAS KG 145,00..."
+      
+      // Her ürün satırı şu formatta:
+      // MİKTAR + "Kilogram/Adet" + (KOD)? + ÜRÜN ADI + FİYAT + İSK + TOPLAM + KDV
+      
+      // Strateji: "Kilogram" veya "Adet" kelimelerini bul, sonra geriye ve ileriye git
+      
+      const unitPositions = [];
+      const regex = /([\d,]+)\s+(Kilogram|Adet)\s+/gi;
+      let m;
+      
+      while ((m = regex.exec(text)) !== null) {
+        unitPositions.push({
+          index: m.index,
+          fullMatch: m[0],
+          qty: m[1],
+          unit: m[2],
+          afterIndex: m.index + m[0].length
+        });
+      }
+      
+      console.log('Bulunan Kilogram/Adet pozisyonları:', unitPositions.length);
+      
+      // Her pozisyon için ürün adını bul
+      for (let i = 0; i < unitPositions.length; i++) {
+        const pos = unitPositions[i];
+        const nextPos = unitPositions[i + 1];
+        
+        // Bu pozisyondan sonraki metni al (bir sonraki "Kilogram/Adet"e kadar veya 200 karakter)
+        const endIndex = nextPos ? nextPos.index : pos.afterIndex + 200;
+        const afterText = text.substring(pos.afterIndex, endIndex);
+        
+        // Ürün kodunu atla (varsa) ve ürün adını bul
+        // Kod 6-8 haneli sayı olabilir: "1250001 ADACAYI TAZE 3.000,00"
+        // veya direkt ürün adı: "AVOKADO 450,00"
+        
+        // Fiyata kadar olan kısmı al (fiyat formatı: 3.000,00 veya 450,00)
+        const priceMatch = afterText.match(/^(\d{6,8}\s+)?([A-ZİÜĞŞÇÖa-zıüğşçö\s]+?)\s+(\d{1,3}(?:\.\d{3})*,\d{2})/);
+        
+        if (priceMatch) {
+          let productName = priceMatch[2].trim().toUpperCase();
+          
+          // Temizle
+          productName = productName.replace(/\s+/g, ' ').trim();
+          
+          // Geçersiz olanları atla
+          if (productName.length < 2) continue;
+          if (/^(VAT|TOTAL|DISC|PRICE|TOPLAM|KDV|İSK)/.test(productName)) continue;
+          
+          const qty = parseFloat(pos.qty.replace(',', '.'));
+          const unit = pos.unit.toLowerCase() === 'kilogram' ? 'kg' : 'adet';
+          const code = matchHuqqaProduct(productName);
+          
+          console.log(`Ürün bulundu: ${qty} ${unit} - "${productName}" -> ${code}`);
+          
+          items.push({
+            code: code,
+            name: code !== '???' && PRODUCTS[code] ? PRODUCTS[code].name : productName,
+            originalName: productName,
+            qty: qty,
+            unit: unit,
+            note: ''
+          });
+        }
+      }
+      
+      console.log('Toplam bulunan ürün:', items.length);
+      
+      // Tekrar edenleri birleştir
+      const merged = {};
+      items.forEach(item => {
+        const key = `${item.code}-${item.unit}`;
+        if (merged[key] && item.code !== '???') {
+          merged[key].qty += item.qty;
+        } else if (!merged[key]) {
+          merged[key] = { ...item };
+        }
+      });
+      
+      return Object.values(merged);
+    }
+    
+    function matchHuqqaProduct(name) {
+      const normalized = name.toLowerCase()
+        .replace(/[ıİ]/g, 'i')
+        .replace(/[şŞ]/g, 's')
+        .replace(/[çÇ]/g, 'c')
+        .replace(/[ğĞ]/g, 'g')
+        .replace(/[üÜ]/g, 'u')
+        .replace(/[öÖ]/g, 'o')
+        .replace(/\s+/g, ' ')
+        .trim();
+      
+      // Huqqa alias'larından ara - tam eşleşme
+      if (HUQQA_ALIASES[normalized]) {
+        return HUQQA_ALIASES[normalized];
+      }
+      
+      // Kısmi eşleşme dene
+      for (const [alias, code] of Object.entries(HUQQA_ALIASES)) {
+        if (normalized.includes(alias) || alias.includes(normalized)) {
+          return code;
+        }
+      }
+      
+      // Genel ALIASES'dan ara
+      const generalMatch = findProductCode(name);
+      if (generalMatch) {
+        return generalMatch;
+      }
+      
+      return '???';
+    }
+    
+    function renderPdfTable(items) {
+      const tbody = document.getElementById('pdf-table-body');
+      tbody.innerHTML = items.map((item, i) => `
+        <tr data-index="${i}" data-code="${item.code}">
+          <td class="product-cell">
+            <div class="product-selector">
+              <div class="product-display" onclick="openPdfProductPicker(this)">
+                <span class="product-name">${item.name}</span>
+                <span class="code-badge ${item.code === '???' ? 'unknown' : ''}">${item.code}</span>
+                <span class="edit-icon">✏️</span>
+              </div>
+              ${item.code === '???' ? `<div class="original-name">Orijinal: ${item.originalName}</div>` : ''}
+            </div>
+          </td>
+          <td><input type="number" class="pdf-qty" value="${item.qty}" step="0.1" min="0.1" style="width:80px"></td>
+          <td>
+            <select class="pdf-unit" style="width:80px">
+              <option value="kg" ${item.unit === 'kg' ? 'selected' : ''}>Kg</option>
+              <option value="adet" ${item.unit === 'adet' ? 'selected' : ''}>Adet</option>
+              <option value="bağ" ${item.unit === 'bağ' ? 'selected' : ''}>Bağ</option>
+              <option value="paket" ${item.unit === 'paket' ? 'selected' : ''}>Paket</option>
+              <option value="kasa" ${item.unit === 'kasa' ? 'selected' : ''}>Kasa</option>
+              <option value="çuval" ${item.unit === 'çuval' ? 'selected' : ''}>Çuval</option>
+            </select>
+          </td>
+          <td><input type="text" class="pdf-note" value="${item.note}" placeholder="Açıklama..."></td>
+          <td><button class="btn btn-danger" style="padding:4px 8px" onclick="this.closest('tr').remove();updatePdfCount()">🗑️</button></td>
+        </tr>
+      `).join('');
+    }
+    
+    function updatePdfCount() {
+      const count = document.querySelectorAll('#pdf-table-body tr').length;
+      document.getElementById('pdf-result-count').textContent = `✅ ${count} ürün bulundu`;
+      document.getElementById('pdf-add-btn').disabled = count === 0;
+    }
+    
+    // PDF için ürün seçici
+    function openPdfProductPicker(el) {
+      currentPickerRow = el.closest('tr');
+      currentPickerRow.dataset.source = 'pdf';
+      const modal = document.getElementById('product-picker-modal');
+      const search = document.getElementById('picker-search');
+      
+      modal.classList.remove('hidden');
+      search.value = '';
+      search.focus();
+      renderPickerProducts('');
+    }
+    
+    // selectProduct fonksiyonunu güncelle
+    const originalSelectProduct = selectProduct;
+    selectProduct = function(code) {
+      if (!currentPickerRow) return;
+      
+      const p = PRODUCTS[code];
+      currentPickerRow.dataset.code = code;
+      currentPickerRow.querySelector('.product-name').textContent = p.name;
+      const badge = currentPickerRow.querySelector('.code-badge');
+      badge.textContent = code;
+      badge.classList.remove('unknown');
+      
+      // Orijinal isim gösterimini kaldır
+      const origName = currentPickerRow.querySelector('.original-name');
+      if (origName) origName.remove();
+      
+      closeProductPicker();
+      
+      // PDF ise sayacı güncelle
+      if (currentPickerRow.dataset.source === 'pdf') {
+        updatePdfCount();
+      }
+    };
+    
+    function addPdfToCart() {
+      const rows = document.querySelectorAll('#pdf-table-body tr');
+      let addedCount = 0;
+      let skippedCount = 0;
+      
+      rows.forEach(row => {
+        const code = row.dataset.code;
+        const qty = parseFloat(row.querySelector('.pdf-qty').value) || 0;
+        const unit = row.querySelector('.pdf-unit').value;
+        const note = row.querySelector('.pdf-note').value.trim();
+        
+        if (!code || code === '???' || qty <= 0) {
+          if (code === '???') skippedCount++;
+          return;
+        }
+        
+        const existing = cart.find(item => 
+          item.code === code && 
+          item.unit === unit && 
+          item.note === note
+        );
+        
+        if (existing) {
+          existing.qty += qty;
+        } else {
+          cart.push({ code, qty, unit, note });
+        }
+        addedCount++;
+      });
+      
+      if (addedCount > 0) {
+        updateCartUI();
+        renderProducts();
+        closePdfUpload();
+        toggleCart();
+        let msg = `✅ ${addedCount} ürün PDF'den sepete eklendi!`;
+        if (skippedCount > 0) msg += `\n⚠️ ${skippedCount} ürün eşleştirilemediği için atlandı.`;
+        alert(msg);
+      } else {
+        alert('Eklenecek geçerli ürün yok!\nEşleştirilemeyen ürünleri manuel olarak seçin.');
+      }
+    }
+  </script>
+</body>
+</html>
